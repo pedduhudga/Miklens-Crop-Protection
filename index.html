@@ -143,6 +143,11 @@
       color: var(--danger);
     }
 
+    .status-indicator.warning {
+      background: rgba(249, 115, 22, 0.12);
+      color: #c2410c;
+    }
+
     .status-dot {
       width: 8px;
       height: 8px;
@@ -683,9 +688,9 @@
       </div>
 
       <div class="sidebar-footer">
-        <div id="syncStatus" class="status-indicator online">
+        <div id="syncStatus" class="status-indicator warning">
           <div class="status-dot"></div>
-          <span>Online</span>
+          <span>Checking connection...</span>
         </div>
         <div id="queueInfo" style="padding: 8px;font-size:0.8rem;color:var(--text-light);text-align:center;margin-top:8px;"></div>
       </div>
@@ -1570,7 +1575,9 @@
       charts: {},
       formVersions: {}, // { formulation_id: [v1, v2, ...] }
       map: null,
-      mapMarkers: []
+      mapMarkers: [],
+      backendConnected: false,
+      lastSyncError: ''
     };
 
     const $ = id => document.getElementById(id);
@@ -1718,6 +1725,8 @@
         <p><strong>Sheet Tabs Found:</strong> ${Array.isArray(lastDbInfo.sheetNames) ? lastDbInfo.sheetNames.length : '-'}</p>
       ` : '<p><strong>Bound Spreadsheet:</strong> Not verified yet</p>';
       el.innerHTML = `
+        <p><strong>Sheet Connection:</strong> ${state.backendConnected ? 'Connected' : 'Disconnected'}</p>
+        <p><strong>Last Sync Error:</strong> ${state.lastSyncError || '-'}</p>
         <p><strong>Formulations:</strong> ${state.formulations.length}</p>
         <p><strong>Trials:</strong> ${state.trials.length}</p>
         <p><strong>Observations:</strong> ${state.observations.length}</p>
@@ -1725,6 +1734,27 @@
         <p><strong>Pending Sync Queue:</strong> ${state.syncQueue.length}</p>
         ${dbBlock}
       `;
+    }
+
+    function setConnectivityStatus() {
+      const el = $('syncStatus');
+      if (!el) return;
+
+      el.classList.remove('online', 'offline', 'warning');
+
+      if (!state.isOnline) {
+        el.classList.add('offline');
+        el.innerHTML = '<div class="status-dot"></div><span>Offline</span>';
+        return;
+      }
+
+      if (state.backendConnected) {
+        el.classList.add('online');
+        el.innerHTML = '<div class="status-dot"></div><span>Online • Sheet Connected</span>';
+      } else {
+        el.classList.add('warning');
+        el.innerHTML = '<div class="status-dot"></div><span>Online • Sheet Not Connected</span>';
+      }
     }
 
     function getEfficacyRating(efficacy) {
@@ -2332,7 +2362,14 @@
     }
 
     async function refreshAll() {
-      if (!state.scriptUrl) { showToast('Configure App Script URL first', 'error'); return; }
+      if (!state.scriptUrl) {
+        state.backendConnected = false;
+        state.lastSyncError = 'Apps Script URL not configured';
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Configure App Script URL first', 'error');
+        return;
+      }
       try {
         const [formulations, trials, observations, ingredients, dbinfo] = await Promise.all([
           ajax('listformulations'),
@@ -2347,6 +2384,9 @@
         state.ingredients = Array.isArray(ingredients) ? ingredients : [];
         persistIngredients();
         lastDbInfo = dbinfo && typeof dbinfo === 'object' ? dbinfo : null;
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
         
         renderFormulations();
         renderTrials();
@@ -2358,6 +2398,10 @@
         
         showToast('Data synced successfully', 'success');
       } catch(err) {
+        state.backendConnected = false;
+        state.lastSyncError = err.message || String(err);
+        setConnectivityStatus();
+        renderDataHealth();
         showToast('Sync failed: ' + err.message, 'error');
       }
     }
@@ -3091,17 +3135,14 @@
 
       window.addEventListener('online', () => {
         state.isOnline = true;
-        $('syncStatus').classList.remove('offline');
-        $('syncStatus').classList.add('online');
-        $('syncStatus').innerHTML = '<div class="status-dot"></div><span>Online</span>';
+        setConnectivityStatus();
         syncQueue();
+        if (state.scriptUrl) refreshAll();
       });
 
       window.addEventListener('offline', () => {
         state.isOnline = false;
-        $('syncStatus').classList.remove('online');
-        $('syncStatus').classList.add('offline');
-        $('syncStatus').innerHTML = '<div class="status-dot"></div><span>Offline</span>';
+        setConnectivityStatus();
       });
 
       $('settingOrgName').value = state.settings.orgName || 'Miklens Crop Protection';
@@ -3115,6 +3156,7 @@
       renderIngredientMaster();
       renderFormIngredientDraft();
       renderDataHealth();
+      setConnectivityStatus();
 
       if (state.scriptUrl) {
         refreshAll();
