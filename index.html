@@ -1,0 +1,3129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miklens Crop Protection - Complete Suite</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-dark: #047857;
+      --primary-light: #d1fae5;
+      --accent: #0891b2;
+      --danger: #dc2626;
+      --success: #10b981;
+      --warning: #f97316;
+      --info: #3b82f6;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-light: #64748b;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 2px solid var(--primary-light);
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.05) 0%, rgba(8, 145, 178, 0.05) 100%);
+    }
+
+    .sidebar-header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--primary);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar-header p {
+      margin: 4px 0 0;
+      font-size: 0.7rem;
+      color: var(--text-light);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .tab-btn {
+      padding: 12px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-light);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tab-btn:hover {
+      background: rgba(5, 150, 105, 0.08);
+      color: var(--primary);
+      transform: translateX(4px);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%);
+      color: var(--primary);
+      border-left: 3px solid var(--primary);
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(5, 150, 105, 0.03);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-indicator.online {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .status-indicator.offline {
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--danger);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .online .status-dot { background: var(--success); }
+    .offline .status-dot { background: var(--danger); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .breadcrumb {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-top: 4px;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .panel {
+      display: none;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+
+    .card h3 {
+      margin: 0 0 16px;
+      color: var(--primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-grid.three { grid-template-columns: repeat(3, 1fr); }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select, textarea {
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+      background: rgba(209, 250, 229, 0.3);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      margin: 4px;
+    }
+
+    .btn-tiny {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      margin: 2px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 0.9rem;
+    }
+
+    .data-table th {
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%);
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary-light);
+    }
+
+    .data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table tr:hover {
+      background: rgba(5, 150, 105, 0.02);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.05) 0%, rgba(5, 150, 105, 0.02) 100%);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card h4 {
+      margin: 0 0 8px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 2px;
+    }
+
+    .badge-primary { background: rgba(5, 150, 105, 0.2); color: var(--primary); }
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .badge-warning { background: rgba(249, 115, 22, 0.2); color: var(--warning); }
+    .badge-danger { background: rgba(220, 38, 38, 0.2); color: var(--danger); }
+    .badge-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+
+    .severity-label {
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .severity-label.low { background: rgba(34, 197, 94, 0.2); color: #16a34a; }
+    .severity-label.medium { background: rgba(249, 115, 22, 0.2); color: #ea580c; }
+    .severity-label.high { background: rgba(239, 68, 68, 0.2); color: #dc2626; }
+    .severity-label.critical { background: rgba(127, 29, 29, 0.2); color: #7c2d12; }
+
+    .rating-badge {
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 6px;
+      text-align: center;
+      min-width: 40px;
+      display: inline-block;
+    }
+
+    .rating-a { background: rgba(34, 197, 94, 0.3); color: #15803d; }
+    .rating-b { background: rgba(74, 222, 128, 0.3); color: #15803d; }
+    .rating-c { background: rgba(249, 115, 22, 0.3); color: #b45309; }
+    .rating-d { background: rgba(239, 68, 68, 0.3); color: #991b1b; }
+    .rating-f { background: rgba(127, 29, 29, 0.3); color: #7c2d12; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      font-size: 0.9rem;
+      animation: slideIn 0.3s ease-out;
+      z-index: 10000;
+      max-width: 300px;
+    }
+
+    .toast.success { background: linear-gradient(135deg, var(--success) 0%, #059669 100%); }
+    .toast.error { background: linear-gradient(135deg, var(--danger) 0%, #991b1b 100%); }
+    .toast.info { background: linear-gradient(135deg, var(--info) 0%, #1e40af 100%); }
+    .toast.warning { background: linear-gradient(135deg, var(--warning) 0%, #92400e 100%); }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 5000;
+      animation: fadeIn 0.3s ease-out;
+      overflow-y: auto;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 700px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.9) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.05) 0%, rgba(5, 150, 105, 0.02) 100%);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: var(--primary);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-light);
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    video {
+      width: 100%;
+      height: 360px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .export-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .queue-badge {
+      display: inline-block;
+      background: var(--warning);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .calendar-day:hover {
+      background: rgba(5, 150, 105, 0.05);
+      border-color: var(--primary);
+    }
+
+    .calendar-day.selected {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .treatment-matrix {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .treatment-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 1fr 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      background: rgba(5, 150, 105, 0.02);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    #fieldMapCanvas {
+      width: 100%;
+      height: 420px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .report-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(5,150,105,0.05), rgba(8,145,178,0.03));
+      padding: 14px;
+    }
+
+    .report-card h4 {
+      margin: 0 0 6px;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    .report-card p {
+      margin: 0 0 10px;
+      color: var(--text-light);
+      font-size: 0.85rem;
+    }
+
+    .print-report-area {
+      border: 1px dashed #94a3b8;
+      border-radius: 10px;
+      padding: 14px;
+      background: white;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #reportPrintArea, #reportPrintArea * { visibility: visible; }
+      #reportPrintArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none;
+        padding: 12px;
+      }
+    }
+
+    .treatment-label {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: absolute; left: -270px; top: 0; height: 100%; z-index: 1000; width: 270px; transition: left 0.3s; }
+      .sidebar.open { left: 0; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.three { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .treatment-row { grid-template-columns: 60px 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1>🌾 Miklens</h1>
+        <p>Complete Suite</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+        <button class="tab-btn" data-tab="formulations">⚗️ Formulations</button>
+        <button class="tab-btn" data-tab="ingredients">🧪 Ingredient Costs</button>
+        <button class="tab-btn" data-tab="trials">🔬 Trials</button>
+        <button class="tab-btn" data-tab="observations">👁️ Observations</button>
+        <button class="tab-btn" data-tab="analytics">📈 Analytics</button>
+        <button class="tab-btn" data-tab="fieldmap">🗺️ Field Map</button>
+        <button class="tab-btn" data-tab="reports">🧾 Reports</button>
+        <button class="tab-btn" data-tab="datamanagement">🗂️ Data Management</button>
+        <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+      </div>
+
+      <div class="sidebar-footer">
+        <div id="syncStatus" class="status-indicator online">
+          <div class="status-dot"></div>
+          <span>Online</span>
+        </div>
+        <div id="queueInfo" style="padding: 8px;font-size:0.8rem;color:var(--text-light);text-align:center;margin-top:8px;"></div>
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <div class="breadcrumb" id="breadcrumb">Home</div>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="panel active">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h4>Formulations</h4>
+              <p class="value" id="stat-formulations">0</p>
+            </div>
+            <div class="stat-card">
+              <h4>Active Trials</h4>
+              <p class="value" id="stat-active-trials">0</p>
+            </div>
+            <div class="stat-card">
+              <h4>Observations</h4>
+              <p class="value" id="stat-observations">0</p>
+            </div>
+            <div class="stat-card">
+              <h4>Avg Efficacy</h4>
+              <p class="value" id="stat-efficacy">0%</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Performance Over Time</h3>
+            <canvas id="efficacyChart" style="max-height: 300px;"></canvas>
+          </div>
+
+          <div class="card">
+            <h3>Efficacy Distribution</h3>
+            <canvas id="distributionChart" style="max-height: 300px;"></canvas>
+          </div>
+
+          <div class="card">
+            <h3>Category Breakdown</h3>
+            <canvas id="categoryChart" style="max-height: 300px;"></canvas>
+          </div>
+
+          <div class="export-buttons">
+            <button class="btn-primary btn-sm" onclick="window.exportAsCSV()">📥 CSV</button>
+            <button class="btn-primary btn-sm" onclick="window.exportAsJSON()">📋 JSON</button>
+            <button class="btn-primary btn-sm" onclick="window.exportAsPDF()">📄 PDF</button>
+            <button class="btn-primary btn-sm" onclick="window.exportAsXLSX()">📊 Excel</button>
+          </div>
+        </section>
+
+        <!-- FORMULATIONS -->
+        <section id="formulations" class="panel">
+          <div class="card">
+            <h3>Add New Formulation</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Formulation Name *</label>
+                <input type="text" id="formName" placeholder="e.g., Emerald Herbicide Pro">
+              </div>
+              <div class="form-group">
+                <label>Category *</label>
+                <select id="formType" onchange="updateFormulationFields()">
+                  <option value="">Select Category</option>
+                  <option value="Pesticide">🐛 Pesticide</option>
+                  <option value="Fungicide">🍄 Fungicide</option>
+                  <option value="Biofertilizer">🌱 Biofertilizer</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- PESTICIDE FIELDS -->
+            <div id="pesticideFields" style="display: none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Pest Type  *</label>
+                  <select id="pestType" onchange="toggleCustomField('pestType', 'customPestType')">
+                    <option value="">Select</option>
+                    <option value="Aphids">Aphids</option>
+                    <option value="Thrips">Thrips</option>
+                    <option value="Whitefly">Whitefly</option>
+                    <option value="Leaf Hoppers">Leaf Hoppers</option>
+                    <option value="Scale Insects">Scale Insects</option>
+                    <option value="Mites">Mites</option>
+                    <option value="Beetles">Beetles</option>
+                    <option value="Caterpillars">Caterpillars</option>
+                    <option value="Nematodes">Nematodes</option>
+                    <option value="__custom__">+ Add New Pest</option>
+                  </select>
+                  <input type="text" id="customPestType" placeholder="Enter new pest name" style="display:none; margin-top:6px;">
+                </div>
+                <div class="form-group">
+                  <label>Target Life Stage *</label>
+                  <select id="lifeStage">
+                    <option value="">Select</option>
+                    <option value="Nymph">Nymph</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Larva">Larva</option>
+                    <option value="Pupa">Pupa</option>
+                    <option value="Egg">Egg</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>LD50 (Toxicity)</label>
+                  <input type="number" id="ld50" placeholder="mg/kg">
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Persistence (days)</label>
+                  <input type="number" id="persistence" value="14">
+                </div>
+                <div class="form-group">
+                  <label>Safety Period (days)</label>
+                  <input type="number" id="safetyPeriod" value="7">
+                </div>
+                <div class="form-group">
+                  <label>Selective (beneficial insects): </label>
+                  <select id="selectivity">
+                    <option value="No">No (Non-selective)</option>
+                    <option value="Yes">Yes (Selective)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- FUNGICIDE FIELDS -->
+            <div id="fungicideFields" style="display: none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Disease Type *</label>
+                  <select id="diseaseType" onchange="toggleCustomField('diseaseType', 'customDiseaseType')">
+                    <option value="">Select</option>
+                    <option value="Powdery Mildew">Powdery Mildew</option>
+                    <option value="Downy Mildew">Downy Mildew</option>
+                    <option value="Leaf Blight">Leaf Blight</option>
+                    <option value="Rust">Rust</option>
+                    <option value="Anthracnose">Anthracnose</option>
+                    <option value="Fusarium">Fusarium</option>
+                    <option value="Sclerotinia">Sclerotinia</option>
+                    <option value="__custom__">+ Add New Disease</option>
+                  </select>
+                  <input type="text" id="customDiseaseType" placeholder="Enter new disease name" style="display:none; margin-top:6px;">
+                </div>
+                <div class="form-group">
+                  <label>Mode of Action</label>
+                  <select id="modeOfAction">
+                    <option value="Preventive">Preventive</option>
+                    <option value="Curative">Curative</option>
+                    <option value="Eradicant">Eradicant</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>FRAC Code</label>
+                  <input type="text" id="fracCode" placeholder="e.g., 11">
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Fungal Sensitivity (0-100)</label>
+                  <input type="number" id="fungalSensitivity" min="0" max="100" value="80">
+                </div>
+                <div class="form-group">
+                  <label>Lesion Reduction (%)</label>
+                  <input type="number" id="lesionReduction" min="0" max="100" value="70">
+                </div>
+                <div class="form-group">
+                  <label>Sporulation Inhibition (%)</label>
+                  <input type="number" id="sporulationInhibition" min="0" max="100" value="80">
+                </div>
+              </div>
+            </div>
+
+            <!-- BIOFERTILIZER FIELDS -->
+            <div id="biofertilizerFields" style="display: none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Microbial Strain *</label>
+                  <select id="microbialStrain" onchange="toggleCustomField('microbialStrain', 'customMicrobialStrain')">
+                    <option value="">Select</option>
+                    <option value="Rhizobium">Rhizobium</option>
+                    <option value="Azospirillum">Azospirillum</option>
+                    <option value="Azotobacter">Azotobacter</option>
+                    <option value="Bacillus">Bacillus</option>
+                    <option value="Trichoderma">Trichoderma</option>
+                    <option value="Pseudomonas">Pseudomonas</option>
+                    <option value="__custom__">+ Add New Strain</option>
+                  </select>
+                  <input type="text" id="customMicrobialStrain" placeholder="Enter new microbial strain" style="display:none; margin-top:6px;">
+                </div>
+                <div class="form-group">
+                  <label>CFU Concentration (cells/mL)</label>
+                  <input type="text" id="cfuConcentration" placeholder="e.g., 10^8">
+                </div>
+                <div class="form-group">
+                  <label>Carrier Material</label>
+                  <select id="carrierMaterial">
+                    <option value="Peat">Peat</option>
+                    <option value="Lignite">Lignite</option>
+                    <option value="Talc">Talc</option>
+                    <option value="Polymer">Polymer</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Viability (%)</label>
+                  <input type="number" id="viability" min="0" max="100" value="85">
+                </div>
+                <div class="form-group">
+                  <label>Shelf-life (months)</label>
+                  <input type="number" id="shelfLife" value="12">
+                </div>
+                <div class="form-group">
+                  <label>Nitrogen Contribution (%)</label>
+                  <input type="number" id="nitrogenContribution" min="0" max="100" value="10">
+                </div>
+              </div>
+            </div>
+
+            <!-- COMMON FIELDS -->
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Active Ingredient (%)</label>
+                <input type="number" id="activeIngredient" min="0" max="100" value="50">
+              </div>
+              <div class="form-group">
+                <label>Cost per Unit (₹)</label>
+                <input type="number" id="formCost" min="0" step="0.01">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Preparation Method & Ingredients</label>
+              <textarea id="formMethod" placeholder="Step-wise preparation instructions..."></textarea>
+            </div>
+
+            <div class="card" style="margin-top:12px;">
+              <h3 style="margin-bottom:12px;">Ingredient Cost Linking</h3>
+              <div class="form-grid three">
+                <div class="form-group">
+                  <label>Ingredient</label>
+                  <select id="formIngredientName"></select>
+                </div>
+                <div class="form-group">
+                  <label>Quantity</label>
+                  <input type="number" id="formIngredientQty" min="0" step="0.01" value="1">
+                </div>
+                <div class="form-group">
+                  <label>Unit</label>
+                  <input type="text" id="formIngredientUnit" value="kg">
+                </div>
+              </div>
+              <div class="export-buttons" style="margin-bottom:10px;">
+                <button class="btn-secondary btn-sm" type="button" id="btnAddFormIngredient">+ Add Ingredient</button>
+                <button class="btn-secondary btn-sm" type="button" id="btnClearFormIngredients">Clear Ingredients</button>
+              </div>
+              <table class="data-table" id="formIngredientDraftTable">
+                <thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Line Cost</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <div style="margin-top:8px;font-weight:700;color:var(--primary);">Calculated Ingredient Cost: <span id="formIngredientTotal">₹0.00</span></div>
+            </div>
+
+            <div class="export-buttons">
+              <button class="btn-primary" id="btnAddForm">Save Formulation</button>
+              <button class="btn-secondary" id="btnCalculateBatch" onclick="openBatchCalculator()">📊 Batch Calculator</button>
+              <button class="btn-secondary" id="btnCalculateCost" onclick="openCostCalculator()">💰 Cost Calculator</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Existing Formulations</h3>
+            <table class="data-table" id="formulationTable">
+              <thead>
+                <tr><th>Name</th><th>Category</th><th>Cost</th><th>Version</th><th>Created</th><th>Actions</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- INGREDIENT COSTS -->
+        <section id="ingredients" class="panel">
+          <div class="card">
+            <h3>Ingredient Cost Master</h3>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Ingredient Name *</label>
+                <input type="text" id="ingredientName" placeholder="e.g., Glyphosate 41% SL">
+              </div>
+              <div class="form-group">
+                <label>Category</label>
+                <select id="ingredientCategory">
+                  <option value="Active">Active</option>
+                  <option value="Adjuvant">Adjuvant</option>
+                  <option value="Surfactant">Surfactant</option>
+                  <option value="Carrier">Carrier</option>
+                  <option value="Stabilizer">Stabilizer</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Unit</label>
+                <input type="text" id="ingredientUnit" value="kg">
+              </div>
+            </div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Unit Cost (₹) *</label>
+                <input type="number" id="ingredientCost" min="0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label>Supplier</label>
+                <input type="text" id="ingredientSupplier" placeholder="Vendor name">
+              </div>
+              <div class="form-group">
+                <label>Notes</label>
+                <input type="text" id="ingredientNotes" placeholder="Grade/purity remarks">
+              </div>
+            </div>
+            <div class="export-buttons">
+              <button class="btn-primary" id="btnAddIngredient">Save Ingredient Cost</button>
+              <button class="btn-secondary" id="btnExportIngredients">Export Ingredient Master</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Saved Ingredient Costs</h3>
+            <table class="data-table" id="ingredientTable">
+              <thead><tr><th>Name</th><th>Category</th><th>Unit</th><th>Unit Cost</th><th>Supplier</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TRIALS -->
+        <section id="trials" class="panel">
+          <div class="card">
+            <h3>Create New Trial</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Trial Name *</label>
+                <input type="text" id="trialName" placeholder="e.g., Field Efficacy Test - Plot A">
+              </div>
+              <div class="form-group">
+                <label>Trial Type *</label>
+                <select id="trialType">
+                  <option value="">Select Type</option>
+                  <option value="Lab">Lab</option>
+                  <option value="Field">Field</option>
+                  <option value="Greenhouse">Greenhouse</option>
+                  <option value="Micro-plot">Micro-plot</option>
+                  <option value="On-farm">On-farm</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Formulation *</label>
+                <select id="trialFormulation"></select>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Crop Type</label>
+                <input type="text" id="cropType" placeholder="e.g., Rice, Wheat, Cotton">
+              </div>
+              <div class="form-group">
+                <label>Crop Stage</label>
+                <select id="cropStage">
+                  <option value="">Select</option>
+                  <option value="Seedling">Seedling</option>
+                  <option value="Vegetative">Vegetative</option>
+                  <option value="Reproductive">Reproductive</option>
+                  <option value="Maturity">Maturity</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Number of Replications</label>
+                <input type="number" id="replications" min="4" max="12" value="4">
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" id="trialStart">
+              </div>
+              <div class="form-group">
+                <label>End Date</label>
+                <input type="date" id="trialEnd">
+              </div>
+              <div class="form-group">
+                <label>Location / Field</label>
+                <input type="text" id="trialLocation" placeholder="e.g., North Field, Karnataka">
+              </div>
+            </div>
+
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" id="trialLatitude" step="0.000001" placeholder="12.971599">
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" id="trialLongitude" step="0.000001" placeholder="77.594566">
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn-secondary" type="button" id="btnCaptureGps">📍 Use Current GPS</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Observation Schedule (comma-separated days)</label>
+              <input type="text" id="obsSchedule" value="1,3,5,7,10,14,21" placeholder="e.g., 1,3,5,7,14,21">
+            </div>
+
+            <button class="btn-primary" id="btnAddTrial" style="width: 100%;">Create Trial</button>
+          </div>
+
+          <div class="card">
+            <h3>Active Trials</h3>
+            <table class="data-table" id="trialsTable">
+              <thead>
+                <tr><th>Trial Name</th><th>Type</th><th>Formulation</th><th>Replications</th><th>Location</th><th>Status</th><th>Next Obs</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- OBSERVATIONS -->
+        <section id="observations" class="panel">
+          <div class="card">
+            <h3>Record Observation</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Select Trial *</label>
+                <select id="obsTrial"></select>
+              </div>
+              <div class="form-group">
+                <label>Observation Date *</label>
+                <input type="date" id="obsDate">
+              </div>
+              <div class="form-group">
+                <label>Replication #</label>
+                <input type="number" id="obsReplication" min="1" value="1">
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Days After Application (DAA)</label>
+                <input type="number" id="obsDaa" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Pest/Weed Cover (%)</label>
+                <input type="number" id="obsDamage" min="0" max="100" value="0">
+              </div>
+              <div class="form-group">
+                <label>Pest Count</label>
+                <input type="number" id="obsPestCount" min="0" value="0">
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Phytotoxicity (0-9)</label>
+                <select id="obsPhyto">
+                  <option value="0">0 - No symptoms</option>
+                  <option value="1">1 - <5% affected</option>
+                  <option value="2">2 - 5-10% affected</option>
+                  <option value="3">3 - 10-25% affected</option>
+                  <option value="4">4 - 25-50% affected</option>
+                  <option value="5">5 - 50-75% affected</option>
+                  <option value="6">6 - 75-90% affected</option>
+                  <option value="7">7 - 90-95% affected</option>
+                  <option value="8">8 - 95-99% affected</option>
+                  <option value="9">9 - Complete kill/100%</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Disease Severity (0-9)</label>
+                <select id="diseaseSeverity">
+                  <option value="0">0 - No symptoms</option>
+                  <option value="1">1 - <5% affected</option>
+                  <option value="2">2 - 5-10% affected</option>
+                  <option value="3">3 - 10-25% affected</option>
+                  <option value="4">4 - 25-50% affected</option>
+                  <option value="5">5 - 50-75% affected</option>
+                  <option value="6">6 - 75-90% affected</option>
+                  <option value="7">7 - 90-95% affected</option>
+                  <option value="8">8 - 95-99% affected</option>
+                  <option value="9">9 - 100% affected (complete)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Efficacy Rating</label>
+                <select id="efficacyRating">
+                  <option value="">Select</option>
+                  <option value="A">A - Excellent (>80%)</option>
+                  <option value="B">B - Good (60-80%)</option>
+                  <option value="C">C - Acceptable (40-60%)</option>
+                  <option value="D">D - Fair (20-40%)</option>
+                  <option value="F">F - Poor (<20%)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Environmental Conditions / Notes</label>
+              <textarea id="obsNotes" placeholder="Temperature, humidity, weather, field conditions..."></textarea>
+            </div>
+
+            <div class="form-grid">
+              <button class="btn-primary" id="btnOpenCamera">📷 Capture Photo</button>
+              <button class="btn-secondary" id="btnVoiceNote">🎤 Voice Note</button>
+            </div>
+
+            <button class="btn-primary" id="btnAddObservation" style="width:100%;">Save Observation</button>
+          </div>
+
+          <div class="card">
+            <h3>Observation Calendar</h3>
+            <select id="obsCalendarTrial" onchange="renderObservationCalendar()">
+              <option value="">Select Trial</option>
+            </select>
+            <div id="obsCalendarContainer" style="margin-top: 16px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Recent Observations</h3>
+            <table class="data-table" id="obsTable">
+              <thead>
+                <tr><th>Trial</th><th>Date</th><th>DAA</th><th>Cover %</th><th>Phyto</th><th>Image Type</th><th>Efficacy</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ANALYTICS -->
+        <section id="analytics" class="panel">
+          <div class="card">
+            <h3>Statistical Analysis</h3>
+            <div id="statsContent"></div>
+          </div>
+
+          <div class="card">
+            <h3>ANOVA Results</h3>
+            <div id="anovaContent" style="font-size: 0.9rem;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Trial Comparison</h3>
+            <canvas id="comparisonChart" style="max-height: 300px;"></canvas>
+          </div>
+
+          <div class="card">
+            <h3>Treatment Effectiveness Matrix</h3>
+            <table class="data-table" id="treatmentTable">
+              <thead>
+                <tr><th>Treatment</th><th>N</th><th>Mean(%)</th><th>SD</th><th>CV</th><th>Quality</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- FIELD MAP -->
+        <section id="fieldmap" class="panel">
+          <div class="card">
+            <h3>Field Location Map</h3>
+            <div class="form-grid">
+              <div>
+                <strong>Total Trials with GPS:</strong>
+                <span id="gpsTrialCount" class="badge badge-info">0</span>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Observation Image Type</label>
+                <select id="obsImageType">
+                  <option value="">None</option>
+                  <option value="field_overview">Field overview</option>
+                  <option value="pest_closeup">Pest or disease close-up</option>
+                  <option value="plant_damage">Plant damage</option>
+                  <option value="microscopic">Microscopic</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Upload Image</label>
+                <input type="file" id="obsImageFile" accept="image/*">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Image Preview</label>
+              <img id="obsImagePreview" src="" alt="Observation image preview" style="max-width:220px;border-radius:8px;display:none;">
+              <input type="hidden" id="obsImage" value="">
+              <button class="btn-secondary btn-sm" id="btnClearObsImage" type="button" style="margin-top:8px;">Clear Image</button>
+            </div>
+              </div>
+              <div>
+                <button class="btn-secondary btn-sm" onclick="window.centerMapOnUser()">📍 Center On My Location</button>
+                <button class="btn-secondary btn-sm" onclick="window.refreshFieldMap()">🔄 Refresh Map</button>
+              </div>
+            </div>
+            <div id="fieldMapCanvas"></div>
+          </div>
+
+          <div class="card">
+            <h3>Location Summary</h3>
+            <table class="data-table" id="locationTable">
+              <thead>
+                <tr><th>Trial</th><th>Field Location</th><th>Latitude</th><th>Longitude</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="reports" class="panel">
+          <div class="card">
+            <h3>Ready-Made Report Generation</h3>
+            <div class="report-grid">
+              <div class="report-card">
+                <h4>Field Visit Report</h4>
+                <p>Daily field activity report with trial status and GPS locations.</p>
+                <button class="btn-primary btn-sm" onclick="window.generateFieldVisitReport()">Generate PDF</button>
+              </div>
+              <div class="report-card">
+                <h4>Trial Summary Report</h4>
+                <p>All trials, efficacy outcomes, CV quality, and key metrics.</p>
+                <button class="btn-primary btn-sm" onclick="window.generateTrialSummaryReport()">Generate PDF</button>
+              </div>
+              <div class="report-card">
+                <h4>Regulatory Snapshot</h4>
+                <p>Compact scientific summary for audit and compliance review.</p>
+                <button class="btn-primary btn-sm" onclick="window.generateRegulatorySnapshotReport()">Generate PDF</button>
+              </div>
+              <div class="report-card">
+                <h4>Observation Print Cards</h4>
+                <p>Printable cards for field teams, similar to herbicide app cards.</p>
+                <button class="btn-primary btn-sm" onclick="window.printObservationCards()">Print Cards</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Instant Print Preview</h3>
+            <div id="reportPrintArea" class="print-report-area"></div>
+            <div class="export-buttons">
+              <button class="btn-secondary btn-sm" onclick="window.refreshReportPreview()">Refresh Preview</button>
+              <button class="btn-primary btn-sm" onclick="window.printCurrentReport()">🖨️ Print Preview</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="datamanagement" class="panel">
+          <div class="card">
+            <h3>Data Backup & Restore</h3>
+            <div class="export-buttons">
+              <button class="btn-primary btn-sm" onclick="window.exportFullBackup()">📦 Export Full Backup</button>
+              <button class="btn-secondary btn-sm" onclick="window.triggerImportBackup()">📤 Import Backup</button>
+              <button class="btn-secondary btn-sm" onclick="window.clearSyncQueueOnly()">🧹 Clear Pending Queue</button>
+            </div>
+            <input id="importBackupFile" type="file" accept="application/json" style="display:none;">
+          </div>
+          <div class="card">
+            <h3>Data Health</h3>
+            <div id="dataHealthInfo"></div>
+          </div>
+        </section>
+
+        <section id="settings" class="panel">
+          <div class="card">
+            <h3>Enhanced App Settings</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Organization Name</label>
+                <input type="text" id="settingOrgName" placeholder="Miklens Crop Protection">
+              </div>
+              <div class="form-group">
+                <label>Default Currency</label>
+                <select id="settingCurrency">
+                  <option value="₹">₹ INR</option>
+                  <option value="$">$ USD</option>
+                  <option value="€">€ EUR</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Auto Sync on Start</label>
+                <select id="settingAutoSync">
+                  <option value="true">Enabled</option>
+                  <option value="false">Disabled</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Google Apps Script URL *</label>
+                <input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/...">
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Google Sheet Link</label>
+                <input type="url" id="settingGoogleSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+              </div>
+              <div class="form-group">
+                <label>Google Drive Folder Link</label>
+                <input type="url" id="settingGoogleDriveFolderUrl" placeholder="https://drive.google.com/drive/folders/...">
+              </div>
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-light);margin-top:6px;">
+              Sheet ID: <span id="settingGoogleSheetIdPreview">-</span> | Folder ID: <span id="settingGoogleDriveFolderIdPreview">-</span>
+            </div>
+            <button class="btn-primary" id="btnSaveUrl">Save Settings</button>
+          </div>
+          <div class="card">
+            <h3>Data Management</h3>
+            <button class="btn-primary btn-sm" id="btnRefreshData">🔄 Sync All Data</button>
+            <button class="btn-secondary btn-sm" id="btnClearLocal" style="margin-left:8px;">Clear Cache</button>
+          </div>
+          <div class="card">
+            <h3>About</h3>
+            <p><strong>Miklens Crop Protection Suite</strong></p>
+            <p>Complete app for agricultural trials, formulation management, and efficacy analysis.</p>
+            <p><small>Version 2.0 - All Features Integrated</small></p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- CAMERA MODAL -->
+  <div id="cameraModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📷 Camera Capture</h3>
+        <button class="modal-close" onclick="document.getElementById('cameraModal').classList.remove('active')">✕</button>
+      </div>
+      <div class="modal-body">
+        <video id="cameraVideo" autoplay playsinline></video>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn-primary" id="btnCapturePhoto" style="flex:1;">Capture</button>
+          <button class="btn-secondary" id="btnClearPhoto" style="flex:1;">Clear</button>
+        </div>
+        <img id="cameraPreview" src="" alt="Preview" style="width:100%;display:none;border-radius:8px;margin-bottom:12px;">
+        <button class="btn-primary" id="btnUsePhoto" style="width:100%;display:none;">Use Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATCH CALCULATOR MODAL -->
+  <div id="batchModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📊 Batch Scaling Calculator</h3>
+        <button class="modal-close" onclick="document.getElementById('batchModal').classList.remove('active')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Lab Batch Size (g)</label>
+            <input type="number" id="labBatch" value="100" min="1">
+          </div>
+          <div class="form-group">
+            <label>Field Multiplication Factor</label>
+            <input type="number" id="fieldFactor" value="10" min="1">
+          </div>
+          <div class="form-group">
+            <label>Commercial Factor</label>
+            <input type="number" id="commercialFactor" value="100" min="1">
+          </div>
+        </div>
+        <div id="batchResults" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COST CALCULATOR MODAL -->
+  <div id="costModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>💰 Cost-Effectiveness Calculator</h3>
+        <button class="modal-close" onclick="document.getElementById('costModal').classList.remove('active')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Cost per Unit (₹)</label>
+            <input type="number" id="costPerUnit" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Batch Size (g)</label>
+            <input type="number" id="batchCostSize" value="100" min="1">
+          </div>
+          <div class="form-group">
+            <label>Applied Area (hectares)</label>
+            <input type="number" id="appliedArea" value="1" min="0.1">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Yield Increase (%)</label>
+            <input type="number" id="yieldIncrease" value="0" min="0" max="100">
+          </div>
+          <div class="form-group">
+            <label>Product Price (₹/unit)</label>
+            <input type="number" id="productPrice" min="0" step="0.01">
+          </div>
+        </div>
+        <button class="btn-primary" id="btnCalcCost" onclick="calculateCostEffectiveness()">Calculate</button>
+        <div id="costResults" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== STATE & CONFIG =====
+    const REFERENCE_DATA = {
+      pests: ['Aphids', 'Thrips', 'Whitefly', 'Leaf Hoppers', 'Scale Insects', 'Mites', 'Beetles', 'Caterpillars', 'Nematodes'],
+      diseases: ['Powdery Mildew', 'Downy Mildew', 'Leaf Blight', 'Rust', 'Anthracnose', 'Fusarium', 'Sclerotinia'],
+      crops: ['Rice', 'Wheat', 'Cotton', 'Tomato', 'Sugarcane', 'Groundnut', 'Chilli', 'Pulses'],
+      strains: ['Rhizobium', 'Azospirillum', 'Azotobacter', 'Bacillus', 'Trichoderma', 'Pseudomonas'],
+      severityLabels: {0:'No symptoms', 1:'<5%', 2:'5-10%', 3:'10-25%', 4:'25-50%', 5:'50-75%', 6:'75-90%', 7:'90-95%', 8:'95-99%', 9:'100%'}
+    };
+
+    const defaultSettings = {
+      orgName: 'Miklens Crop Protection',
+      currency: '₹',
+      autoSync: true,
+      googleSheetUrl: '',
+      googleDriveFolderUrl: '',
+      googleSheetId: '',
+      googleDriveFolderId: ''
+    };
+
+    let storedSettings = {};
+    try {
+      storedSettings = JSON.parse(localStorage.getItem('agri-settings') || '{}') || {};
+    } catch (_) {
+      storedSettings = {};
+    }
+
+    // Accept both frontend camelCase and backend snake_case keys.
+    if (storedSettings && typeof storedSettings === 'object') {
+      if (storedSettings.org_name && !storedSettings.orgName) storedSettings.orgName = storedSettings.org_name;
+      if (storedSettings.auto_sync !== undefined && storedSettings.autoSync === undefined) storedSettings.autoSync = !!storedSettings.auto_sync;
+      if (storedSettings.google_sheet_url && !storedSettings.googleSheetUrl) storedSettings.googleSheetUrl = storedSettings.google_sheet_url;
+      if (storedSettings.google_drive_folder_url && !storedSettings.googleDriveFolderUrl) storedSettings.googleDriveFolderUrl = storedSettings.google_drive_folder_url;
+      if (storedSettings.google_sheet_id && !storedSettings.googleSheetId) storedSettings.googleSheetId = storedSettings.google_sheet_id;
+      if (storedSettings.google_drive_folder_id && !storedSettings.googleDriveFolderId) storedSettings.googleDriveFolderId = storedSettings.google_drive_folder_id;
+      if (storedSettings.script_url && !storedSettings.scriptUrl) storedSettings.scriptUrl = storedSettings.script_url;
+    }
+
+    const initialScriptUrl = normalizeScriptUrl(
+      localStorage.getItem('agri-script-url') || storedSettings.script_url || ''
+    );
+
+    const state = {
+      scriptUrl: initialScriptUrl,
+      formulations: [],
+      trials: [],
+      observations: [],
+      ingredients: [],
+      formIngredientDraft: [],
+      settings: { ...defaultSettings, ...storedSettings },
+      syncQueue: JSON.parse(localStorage.getItem('agri-sync-queue') || '[]'),
+      isSyncing: false,
+      isOnline: navigator.onLine,
+      charts: {},
+      formVersions: {}, // { formulation_id: [v1, v2, ...] }
+      map: null,
+      mapMarkers: []
+    };
+
+    const $ = id => document.getElementById(id);
+    let cameraStream = null;
+    let lastDbInfo = null;
+
+    // ===== UTILITY FUNCTIONS =====
+    function safeParseNum(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function safeJsonParse(str, fallback = null) {
+      try { return str ? JSON.parse(str) : fallback; } catch(e) { return fallback; }
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function normalizeScriptUrl(url) {
+      const raw = String(url || '').trim();
+      if (!raw) return '';
+      let clean = raw.split('?')[0].trim();
+      clean = clean.replace(/\/+$/, '');
+      if (/\/dev$/i.test(clean)) clean = clean.replace(/\/dev$/i, '/exec');
+      if (/\/macros\/s\//i.test(clean) && !/\/(exec|dev)$/i.test(clean)) clean += '/exec';
+      return clean;
+    }
+
+    function updateFormulationFields() {
+      const type = $('formType').value;
+      $('pesticideFields').style.display = type === 'Pesticide' ? 'block' : 'none';
+      $('fungicideFields').style.display = type === 'Fungicide' ? 'block' : 'none';
+      $('biofertilizerFields').style.display = type === 'Biofertilizer' ? 'block' : 'none';
+    }
+
+    function toggleCustomField(selectId, inputId) {
+      const sel = $(selectId);
+      const inp = $(inputId);
+      if (!sel || !inp) return;
+      inp.style.display = sel.value === '__custom__' ? 'block' : 'none';
+      if (sel.value !== '__custom__') inp.value = '';
+    }
+
+    window.toggleCustomField = toggleCustomField;
+
+    function getCustomAwareValue(selectId, inputId) {
+      const sel = $(selectId);
+      const inp = $(inputId);
+      if (!sel) return '';
+      if (sel.value === '__custom__') return (inp?.value || '').trim();
+      return sel.value;
+    }
+
+    function getCurrencySymbol() {
+      return state.settings?.currency || '₹';
+    }
+
+    function extractGoogleSheetId(url) {
+      if (!url) return '';
+      const m = String(url).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      return m ? m[1] : '';
+    }
+
+    function extractGoogleDriveFolderId(url) {
+      if (!url) return '';
+      const s = String(url);
+      const m1 = s.match(/\/folders\/([a-zA-Z0-9-_]+)/);
+      if (m1) return m1[1];
+      const m2 = s.match(/[?&]id=([a-zA-Z0-9-_]+)/);
+      return m2 ? m2[1] : '';
+    }
+
+    function persistIngredients() {
+      localStorage.setItem('agri-ingredients', JSON.stringify(state.ingredients));
+    }
+
+    function findIngredientCostByName(name) {
+      const hit = state.ingredients.find(i => String(i.name).toLowerCase() === String(name || '').toLowerCase());
+      return hit ? (safeParseNum(hit.cost) || 0) : 0;
+    }
+
+    function populateIngredientSelectors() {
+      const sel = $('formIngredientName');
+      if (!sel) return;
+      const options = ['<option value="">Select ingredient</option>']
+        .concat(state.ingredients.map(i => `<option value="${i.name}">${i.name} (${getCurrencySymbol()}${safeParseNum(i.cost) || 0}/${i.unit || 'unit'})</option>`));
+      sel.innerHTML = options.join('');
+    }
+
+    function renderIngredientMaster() {
+      const body = $('ingredientTable')?.querySelector('tbody');
+      if (!body) return;
+      const emptyMsg = !state.scriptUrl
+        ? 'Not connected to Google Sheet. Save Apps Script URL in Settings, then Sync.'
+        : 'No ingredients found in Google Sheet.';
+      body.innerHTML = state.ingredients.map(i => `
+        <tr>
+          <td><strong>${i.name}</strong></td>
+          <td>${i.category || '-'}</td>
+          <td>${i.unit || 'unit'}</td>
+          <td>${getCurrencySymbol()}${(safeParseNum(i.cost) || 0).toFixed(2)}</td>
+          <td>${i.supplier || '-'}</td>
+          <td><button class="btn-secondary btn-tiny" onclick="window.deleteIngredient('${i.id}')">Delete</button></td>
+        </tr>
+      `).join('') || `<tr><td colspan="6" style="text-align:center;color:#999;">${emptyMsg}</td></tr>`;
+      populateIngredientSelectors();
+    }
+
+    function renderFormIngredientDraft() {
+      const body = $('formIngredientDraftTable')?.querySelector('tbody');
+      if (!body) return;
+      let total = 0;
+      body.innerHTML = state.formIngredientDraft.map((i, idx) => {
+        const line = (safeParseNum(i.qty) || 0) * (safeParseNum(i.unitCost) || 0);
+        total += line;
+        return `
+          <tr>
+            <td>${i.name}</td>
+            <td>${i.qty}</td>
+            <td>${i.unit || '-'}</td>
+            <td>${getCurrencySymbol()}${(safeParseNum(i.unitCost) || 0).toFixed(2)}</td>
+            <td>${getCurrencySymbol()}${line.toFixed(2)}</td>
+            <td><button class="btn-secondary btn-tiny" onclick="window.removeFormIngredient(${idx})">Remove</button></td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;">No ingredient linked yet</td></tr>';
+      $('formIngredientTotal').textContent = `${getCurrencySymbol()}${total.toFixed(2)}`;
+      if ($('formCost') && total > 0) {
+        $('formCost').value = total.toFixed(2);
+      }
+    }
+
+    function renderDataHealth() {
+      const el = $('dataHealthInfo');
+      if (!el) return;
+      const dbBlock = lastDbInfo && lastDbInfo.ok ? `
+        <p><strong>Bound Spreadsheet:</strong> ${lastDbInfo.spreadsheetName || '-'}</p>
+        <p><strong>Spreadsheet ID:</strong> ${lastDbInfo.spreadsheetId || '-'}</p>
+        <p><strong>Sheet Tabs Found:</strong> ${Array.isArray(lastDbInfo.sheetNames) ? lastDbInfo.sheetNames.length : '-'}</p>
+      ` : '<p><strong>Bound Spreadsheet:</strong> Not verified yet</p>';
+      el.innerHTML = `
+        <p><strong>Formulations:</strong> ${state.formulations.length}</p>
+        <p><strong>Trials:</strong> ${state.trials.length}</p>
+        <p><strong>Observations:</strong> ${state.observations.length}</p>
+        <p><strong>Ingredient Cost Records:</strong> ${state.ingredients.length}</p>
+        <p><strong>Pending Sync Queue:</strong> ${state.syncQueue.length}</p>
+        ${dbBlock}
+      `;
+    }
+
+    function getEfficacyRating(efficacy) {
+      const val = safeParseNum(efficacy) || 0;
+      if (val > 80) return 'A';
+      if (val > 60) return 'B';
+      if (val > 40) return 'C';
+      if (val > 20) return 'D';
+      return 'F';
+    }
+
+    function getSeverityLabel(severity) {
+      return REFERENCE_DATA.severityLabels[Math.min(9, Math.max(0, safeParseNum(severity) || 0))];
+    }
+
+    // ===== EFFICACY CALCULATIONS =====
+    function computeControlPercentFromCover(trial, obs) {
+      if (!trial || !obs) return null;
+      const damage = safeParseNum(obs.damage);
+      if (damage === null) return null;
+      const baseline = (trial.observations || [])[0];
+      const controlDamage = baseline ? safeParseNum(baseline.damage) : null;
+      if (controlDamage === null || controlDamage <= 0) return null;
+      const efficacy = (1 - (damage / controlDamage)) * 100;
+      return Math.max(0, Math.min(100, efficacy));
+    }
+
+    function computeAggregateStats() {
+      const values = state.observations.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+      if (!values.length) return { avgDamage: 0, avgEfficacy: 0, cv: 0, sd: 0, count: 0, min: 0, max: 0 };
+      
+      const avg = values.reduce((a,b) => a+b) / values.length;
+      const variance = values.reduce((a,b) => a + Math.pow(b-avg, 2)) / values.length;
+      const sd = Math.sqrt(variance);
+      const cv = avg === 0 ? 0 : (sd / avg) * 100;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      
+      return {
+        avgDamage: avg.toFixed(2),
+        avgEfficacy: (100 - avg).toFixed(1),
+        cv: cv.toFixed(2),
+        sd: sd.toFixed(2),
+        count: values.length,
+        min: min.toFixed(2),
+        max: max.toFixed(2)
+      };
+    }
+
+    function interpretCV(cv) {
+      if (cv < 7) return 'Excellent';
+      if (cv < 15) return 'Good';
+      if (cv < 25) return 'Acceptable';
+      return 'Poor';
+    }
+
+    // ===== STATISTICAL ANALYSIS =====
+    function computeGroupStats(observations) {
+      if (!observations.length) return { mean: 0, sd: 0, cv:0, n: 0 };
+      const vals = observations.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+      if (!vals.length) return { mean: 0, sd: 0, cv: 0, n: 0 };
+      
+      const mean = vals.reduce((a,b) => a+b) / vals.length;
+      const variance = vals.reduce((a,b) => a + Math.pow(b-mean, 2)) / vals.length;
+      const sd = Math.sqrt(variance);
+      const cv = mean === 0 ? 0 : (sd / mean) * 100;
+      
+      return { mean: mean.toFixed(2), sd: sd.toFixed(2), cv: cv.toFixed(2), n: vals.length };
+    }
+
+    function computeANOVA() {
+      const trialsData = {};
+      state.observations.forEach(obs => {
+        if (!trialsData[obs.trial_id]) trialsData[obs.trial_id] = [];
+        trialsData[obs.trial_id].push(obs);
+      });
+
+      const groups = Object.values(trialsData);
+      if (groups.length < 2) return null;
+
+      const allValues = groups.map(g => g.map(o => safeParseNum(o.damage)).filter(v => v !== null)).flat().filter(v => v !== null);
+      const grandMean = allValues.reduce((a,b) => a+b) / allValues.length;
+      
+      let ssBetween = 0;
+      let ssWithin = 0;
+      let dfBetween = groups.length - 1;
+      let dfWithin = allValues.length - groups.length;
+
+      groups.forEach(group => {
+        const vals = group.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+        if (vals.length) {
+          const mean = vals.reduce((a,b) => a+b) / vals.length;
+          ssBetween += vals.length * Math.pow(mean - grandMean, 2);
+          ssWithin += vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0);
+        }
+      });
+
+      const msBetween = ssBetween / dfBetween;
+      const msWithin = ssWithin / dfWithin;
+      const fValue = msWithin === 0 ? 0 : msBetween / msWithin;
+      
+      // Approximate p-value (simplified)
+      const pValue = fValue > 5 ? '< 0.05 (Significant)' : '> 0.05 (Not significant)';
+
+      return {
+        fValue: fValue.toFixed(3),
+        dfBetween,
+        dfWithin,
+        msBetween: msBetween.toFixed(3),
+        msWithin: msWithin.toFixed(3),
+        pValue
+      };
+    }
+
+    function computeEffectSize(group1, group2) {
+      const vals1 = group1.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+      const vals2 = group2.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+      if (!vals1.length || !vals2.length) return 0;
+      
+      const mean1 = vals1.reduce((a,b) => a+b) / vals1.length;
+      const mean2 = vals2.reduce((a,b) => a+b) / vals2.length;
+      const var1 = vals1.reduce((a,b) => a + Math.pow(b-mean1, 2)) / vals1.length;
+      const var2 = vals2.reduce((a,b) => a + Math.pow(b-mean2, 2)) / vals2.length;
+      const pooledSd = Math.sqrt((var1 + var2) / 2);
+      const cohen = pooledSd === 0 ? 0 : (mean1 - mean2) / pooledSd;
+      return Math.abs(cohen).toFixed(3);
+    }
+
+    // ===== API & SYNC =====
+    async function ajax(action, data) {
+      if (!state.scriptUrl) throw new Error('App Script URL not configured');
+
+      // Use simple CORS requests to avoid browser preflight failures with Apps Script.
+      const isWrite = !!data;
+      const opts = { method: isWrite ? 'POST' : 'GET' };
+      if (isWrite) {
+        // application/x-www-form-urlencoded is a CORS-simple content type.
+        opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
+        opts.body = new URLSearchParams({ payload: JSON.stringify(data) }).toString();
+      }
+
+      const targetUrl = `${state.scriptUrl}?action=${encodeURIComponent(action)}`;
+
+      try {
+        const res = await fetch(targetUrl, opts);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+        const json = await res.json();
+        if (json && typeof json === 'object' && json.ok === false) {
+          throw new Error(json.error || 'Backend returned a failed response');
+        }
+        return json;
+      } catch(err) {
+        console.warn('API error:', err);
+        const msg = String(err && err.message ? err.message : err);
+        const isFetchFailure = /Failed to fetch|NetworkError|Load failed/i.test(msg);
+        if (isFetchFailure) {
+          const protocolHint = location.protocol === 'file:'
+            ? 'App is opened as local file (file://). Run with http://localhost (for example VS Code Live Server) and try again.'
+            : 'Check internet, Apps Script deployment URL, and Web App access set to Anyone.';
+          throw new Error(`Failed to reach API. ${protocolHint} URL: ${targetUrl}`);
+        }
+        if (!state.isOnline) {
+          if (data) state.syncQueue.push({action, data, timestamp: Date.now()});
+          localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+        }
+        throw err;
+      }
+    }
+
+    async function ajaxGetWithParams(action, params) {
+      if (!state.scriptUrl) throw new Error('App Script URL not configured');
+      const query = new URLSearchParams({ action: action, ...(params || {}) }).toString();
+      const res = await fetch(`${state.scriptUrl}?${query}`, { method: 'GET' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      const json = await res.json();
+      if (json && typeof json === 'object' && json.ok === false) {
+        throw new Error(json.error || 'Backend returned a failed response');
+      }
+      return json;
+    }
+
+    async function syncQueue() {
+      if (!state.isOnline || state.isSyncing || !state.syncQueue.length) return;
+      state.isSyncing = true;
+      const remaining = [];
+      let sentCount = 0;
+      for (const item of state.syncQueue) {
+        try {
+          await ajax(item.action, item.data);
+          sentCount++;
+        } catch(e) {
+          console.warn('Sync failed:', e);
+          remaining.push(item);
+        }
+      }
+      state.syncQueue = remaining;
+      localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+      state.isSyncing = false;
+      updateQueueUI();
+      renderDataHealth();
+      if (sentCount > 0) {
+        await refreshAll();
+      }
+    }
+
+    function updateQueueUI() {
+      const info = $('queueInfo');
+      if (state.syncQueue.length) {
+        info.innerHTML = `<span class="queue-badge">${state.syncQueue.length} pending</span>`;
+      } else {
+        info.innerHTML = '';
+      }
+    }
+
+    // ===== UI NAVIGATION =====
+    function setActiveTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.panel').forEach(p => {
+        p.classList.toggle('active', p.id === tabName);
+      });
+      const titles = {
+        dashboard: '📊 Dashboard',
+        formulations: '⚗️ Formulations',
+        ingredients: '🧪 Ingredient Costs',
+        trials: '🔬 Trials',
+        observations: '👁️ Observations',
+        analytics: '📈 Analytics',
+        fieldmap: '🗺️ Field Map',
+        reports: '🧾 Reports',
+        datamanagement: '🗂️ Data Management',
+        settings: '⚙️ Settings'
+      };
+      $('pageTitle').textContent = titles[tabName] || tabName;
+
+      if (tabName === 'fieldmap') {
+        setTimeout(renderFieldMap, 80);
+      }
+      if (tabName === 'reports') {
+        renderReportPreview();
+      }
+      if (tabName === 'ingredients') {
+        renderIngredientMaster();
+      }
+      if (tabName === 'datamanagement') {
+        renderDataHealth();
+      }
+    }
+
+    function formatCoordinate(v) {
+      const n = safeParseNum(v);
+      return n === null ? '-' : n.toFixed(6);
+    }
+
+    function captureTrialLocation() {
+      if (!navigator.geolocation) {
+        showToast('Geolocation not supported in this browser', 'error');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(pos => {
+        $('trialLatitude').value = pos.coords.latitude.toFixed(6);
+        $('trialLongitude').value = pos.coords.longitude.toFixed(6);
+        showToast('GPS location captured', 'success');
+      }, err => {
+        showToast('Failed to capture GPS: ' + err.message, 'error');
+      }, {
+        enableHighAccuracy: true,
+        timeout: 12000
+      });
+    }
+
+    function initFieldMapIfNeeded() {
+      if (!window.L || state.map || !$('fieldMapCanvas')) return;
+      state.map = L.map('fieldMapCanvas').setView([20.5937, 78.9629], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(state.map);
+    }
+
+    function renderFieldMap() {
+      initFieldMapIfNeeded();
+      if (!state.map) return;
+
+      state.mapMarkers.forEach(marker => state.map.removeLayer(marker));
+      state.mapMarkers = [];
+
+      const gpsTrials = state.trials.filter(t => safeParseNum(t.latitude) !== null && safeParseNum(t.longitude) !== null);
+      $('gpsTrialCount').textContent = String(gpsTrials.length);
+
+      const locBody = $('locationTable').querySelector('tbody');
+      locBody.innerHTML = state.trials.map(t => `
+        <tr>
+          <td><strong>${t.name || '-'}</strong></td>
+          <td>${t.location || '-'}</td>
+          <td>${formatCoordinate(t.latitude)}</td>
+          <td>${formatCoordinate(t.longitude)}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" style="text-align:center;color:#999;">No trials yet</td></tr>';
+
+      if (!gpsTrials.length) {
+        state.map.setView([20.5937, 78.9629], 4);
+        return;
+      }
+
+      const bounds = [];
+      gpsTrials.forEach(trial => {
+        const lat = safeParseNum(trial.latitude);
+        const lng = safeParseNum(trial.longitude);
+        const marker = L.marker([lat, lng]).addTo(state.map);
+        marker.bindPopup(`<strong>${trial.name || 'Trial'}</strong><br>${trial.location || ''}<br>Type: ${trial.type || '-'}<br>Replications: ${trial.replications || '-'}`);
+        state.mapMarkers.push(marker);
+        bounds.push([lat, lng]);
+      });
+
+      state.map.fitBounds(bounds, { padding: [25, 25] });
+    }
+
+    window.refreshFieldMap = renderFieldMap;
+    window.centerMapOnUser = () => {
+      if (!state.map || !navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        state.map.setView([lat, lng], 15);
+        L.circle([lat, lng], { radius: 20, color: '#3b82f6' }).addTo(state.map);
+        showToast('Centered on current location', 'success');
+      }, () => showToast('Unable to access current location', 'error'));
+    };
+
+    // ===== RENDER FUNCTIONS =====
+    function renderFormulations() {
+      const tbody = $('formulationTable').querySelector('tbody');
+      tbody.innerHTML = state.formulations.map(f => `
+        <tr>
+          <td><strong>${f.name}</strong></td>
+          <td><span class="badge badge-primary">${f.type}</span></td>
+          <td>${getCurrencySymbol()}${f.cost || 0}</td>
+          <td>v${f.version || 1}</td>
+          <td>${new Date(f.created_at).toLocaleDateString()}</td>
+          <td><button class="btn-sm btn-secondary" onclick="editFormulation('${f.id}')">Edit</button></td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;">No formulations yet</td></tr>';
+
+      const sel = $('trialFormulation');
+      sel.innerHTML = '<option value="">Select...</option>' + state.formulations.map(f => 
+        `<option value="${f.id}">${f.name} (${f.type})</option>`
+      ).join('');
+    }
+
+    function renderTrials() {
+      const tbody = $('trialsTable').querySelector('tbody');
+      tbody.innerHTML = state.trials.map(t => {
+        const obsCount = state.observations.filter(o => o.trial_id === t.id).length;
+        return `
+          <tr>
+            <td><strong>${t.name}</strong></td>
+            <td>${t.type}</td>
+            <td>${state.formulations.find(f=>f.id==t.formulation_id)?.name || 'N/A'}</td>
+            <td>${t.replications || 4}</td>
+            <td>${t.location || '-'}<br><small style="color:var(--text-light);">${formatCoordinate(t.latitude)}, ${formatCoordinate(t.longitude)}</small></td>
+            <td><span class="badge badge-primary">${t.status}</span></td>
+            <td>${obsCount > 0 ? '✓ Recording' : 'Pending'}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;">No trials yet</td></tr>';
+
+      const sel = $('obsTrial');
+      sel.innerHTML = '<option value="">Select...</option>' + state.trials.map(t => 
+        `<option value="${t.id}">${t.name}</option>`
+      ).join('');
+
+      const calSel = $('obsCalendarTrial');
+      calSel.innerHTML = '<option value="">Select Trial</option>' + state.trials.map(t => 
+        `<option value="${t.id}">${t.name}</option>`
+      ).join('');
+    }
+
+    function renderObservations() {
+      const tbody = $('obsTable').querySelector('tbody');
+      tbody.innerHTML = state.observations.map(o => {
+        const trial = state.trials.find(t => t.id == o.trial_id);
+        const efficacy = computeControlPercentFromCover(trial, o) || 0;
+        const rating = getEfficacyRating(efficacy);
+        const imageType = String(o.image_type || '').trim().replace(/_/g, ' ');
+        return `
+          <tr>
+            <td>${trial?.name || 'N/A'}</td>
+            <td>${new Date(o.date).toLocaleDateString()}</td>
+            <td>${o.daa || 0}</td>
+            <td>${o.damage}%</td>
+            <td><span class="severity-label low">${o.phyto}</span></td>
+            <td>${imageType || '-'}</td>
+            <td><span class="rating-badge rating-${rating.toLowerCase()}">${rating}</span></td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;">No observations yet</td></tr>';
+    }
+
+    function renderObservationCalendar() {
+      const trialId = $('obsCalendarTrial').value;
+      if (!trialId) { $('obsCalendarContainer').innerHTML = ''; return; }
+      
+      const trial = state.trials.find(t => t.id === trialId);
+      const obsSchedule = trial?.obs_schedule ? trial.obs_schedule.split(',').map(d => parseInt(d)) : [];
+      const trialObs = state.observations.filter(o => o.trial_id === trialId);
+      
+      let html = '<div style="font-size: 0.9rem;"><strong>Observation Schedule</strong><br>';
+      obsSchedule.forEach(day => {
+        const hasObs = trialObs.some(o => safeParseNum(o.daa) === day);
+        const icon = hasObs ? '✓' : '○';
+        const status = hasObs ? 'completed' : 'pending';
+        html += `<span style="margin: 4px; padding: 6px 10px; border-radius: 4px; display: inline-block; background: ${hasObs ? 'rgba(34,197,94,0.2)' : 'rgba(249,115,22,0.2)'}">${icon} Day ${day}</span>`;
+      });
+      html += '</div>';
+      $('obsCalendarContainer').innerHTML = html;
+    }
+
+    function renderDashboard() {
+      const stats = computeAggregateStats();
+      $('stat-formulations').textContent = state.formulations.length;
+      $('stat-active-trials').textContent = state.trials.filter(t => t.status === 'Active').length;
+      $('stat-observations').textContent = state.observations.length;
+      $('stat-efficacy').textContent = stats.avgEfficacy + '%';
+      
+      renderEfficacyChart();
+      renderDistributionChart();
+      renderCategoryChart();
+      renderStats();
+    }
+
+    function renderStats() {
+      const stats = computeAggregateStats();
+      $('statsContent').innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          <div><strong>Avg Damage:</strong> ${stats.avgDamage}%</div>
+          <div><strong>Avg Efficacy:</strong> ${stats.avgEfficacy}%</div>
+          <div><strong>Std Dev:</strong> ${stats.sd}%</div>
+          <div><strong>CV:</strong> ${stats.cv}% (${interpretCV(stats.cv)})</div>
+          <div><strong>Min:</strong> ${stats.min}%</div>
+          <div><strong>Max:</strong> ${stats.max}%</div>
+          <div><strong>Sample Size:</strong> ${stats.count}</div>
+          <div><strong>Coverage:</strong> ${stats.count > 0 ? ((stats.count / state.observations.length) * 100).toFixed(0) : 0}%</div>
+        </div>
+      `;
+
+      const anova = computeANOVA();
+      if (anova) {
+        $('anovaContent').innerHTML = `
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead><tr style="background: rgba(5,150,105,0.1);">
+              <th style="text-align: left; padding: 8px;">Source</th>
+              <th style="padding: 8px;">SS</th>
+              <th style="padding: 8px;">df</th>
+              <th style="padding: 8px;">MS</th>
+              <th style="padding: 8px;">F-value</th>
+              <th style="padding: 8px;">p-value</th>
+            </tr></thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;"><strong>Between Groups</strong></td>
+                <td style="padding: 8px; text-align: center;">-</td>
+                <td style="padding: 8px; text-align: center;">${anova.dfBetween}</td>
+                <td style="padding: 8px; text-align: center;">${anova.msBetween}</td>
+                <td style="padding: 8px; text-align: center;"><strong>${anova.fValue}</strong></td>
+                <td style="padding: 8px; text-align: center;">${anova.pValue}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px;"><strong>Within Groups</strong></td>
+                <td style="padding: 8px; text-align: center;">-</td>
+                <td style="padding: 8px; text-align: center;">${anova.dfWithin}</td>
+                <td style="padding: 8px; text-align: center;">${anova.msWithin}</td>
+                <td colspan="2" style="padding: 8px; text-align: center;"><em>Error term</em></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+
+      renderTreatmentTable();
+    }
+
+    function renderTreatmentTable() {
+      const trialsData = {};
+      state.observations.forEach(obs => {
+        if (!trialsData[obs.trial_id]) trialsData[obs.trial_id] = [];
+        trialsData[obs.trial_id].push(obs);
+      });
+
+      const tbody = $('treatmentTable').querySelector('tbody');
+      tbody.innerHTML = Object.entries(trialsData).map(([trialId, observations]) => {
+        const trial = state.trials.find(t => t.id === trialId);
+        const stats = computeGroupStats(observations);
+        const quality = interpretCV(parseFloat(stats.cv));
+        return `
+          <tr>
+            <td><strong>${trial?.name || 'Trial ' + trialId}</strong></td>
+            <td style="text-align: center;">${stats.n}</td>
+            <td style="text-align: center;">${stats.mean}%</td>
+            <td style="text-align: center;">${stats.sd}</td>
+            <td style="text-align: center;">${stats.cv}%</td>
+            <td><span class="badge badge-info">${quality}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderEfficacyChart() {
+      const ctx = $('efficacyChart');
+      if (!ctx || !window.Chart) return;
+      
+      const sorted = state.observations.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+      const labels = sorted.map(o => new Date(o.date).toLocaleDateString());
+      const values = sorted.map(o => safeParseNum(o.damage) || 0);
+      
+      if (state.charts.efficacy) state.charts.efficacy.destroy();
+      
+      state.charts.efficacy = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Pest/Weed Cover %',
+            data: values,
+            borderColor: 'rgb(220, 38, 38)',
+            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: 'rgb(220, 38, 38)'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      });
+    }
+
+    function renderDistributionChart() {
+      const ctx = $('distributionChart');
+      if (!ctx || !window.Chart) return;
+      
+      const values = state.observations.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+      const bins = [0, 20, 40, 60, 80, 100];
+      const counts = [0, 0, 0, 0, 0];
+      
+      values.forEach(v => {
+        for (let i = 0; i < bins.length - 1; i++) {
+          if (v >= bins[i] && v < bins[i+1]) counts[i]++;
+        }
+      });
+      
+      if (state.charts.distribution) state.charts.distribution.destroy();
+      
+      state.charts.distribution = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'],
+          datasets: [{
+            label: 'Frequency',
+            data: counts,
+            backgroundColor: 'rgba(5, 150, 105, 0.6)',
+            borderColor: 'rgb(5, 150, 105)',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y'
+        }
+      });
+    }
+
+    function renderCategoryChart() {
+      const ctx = $('categoryChart');
+      if (!ctx || !window.Chart) return;
+      
+      const categories = {};
+      state.formulations.forEach(f => {
+        categories[f.type] = (categories[f.type] || 0) + 1;
+      });
+      
+      if (state.charts.category) state.charts.category.destroy();
+      
+      state.charts.category = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(categories),
+          datasets: [{
+            data: Object.values(categories),
+            backgroundColor: ['rgba(5, 150, 105, 0.6)', 'rgba(8, 145, 178, 0.6)', 'rgba(249, 115, 22, 0.6)', 'rgba(139, 92, 246, 0.6)']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+
+    async function refreshAll() {
+      if (!state.scriptUrl) { showToast('Configure App Script URL first', 'error'); return; }
+      try {
+        const [formulations, trials, observations, ingredients, dbinfo] = await Promise.all([
+          ajax('listformulations'),
+          ajax('listtrials'),
+          ajax('listobservations'),
+          ajax('listingredients'),
+          ajax('dbinfo')
+        ]);
+        state.formulations = Array.isArray(formulations) ? formulations : [];
+        state.trials = Array.isArray(trials) ? trials : [];
+        state.observations = Array.isArray(observations) ? observations : [];
+        state.ingredients = Array.isArray(ingredients) ? ingredients : [];
+        persistIngredients();
+        lastDbInfo = dbinfo && typeof dbinfo === 'object' ? dbinfo : null;
+        
+        renderFormulations();
+        renderTrials();
+        renderObservations();
+        renderDataHealth();
+        if ($('dashboard').classList.contains('active')) renderDashboard();
+        if ($('fieldmap').classList.contains('active')) renderFieldMap();
+        if ($('reports').classList.contains('active')) renderReportPreview();
+        
+        showToast('Data synced successfully', 'success');
+      } catch(err) {
+        showToast('Sync failed: ' + err.message, 'error');
+      }
+    }
+
+    // ===== ADD FUNCTIONS =====
+    $('btnAddForm').onclick = async () => {
+      const name = $('formName').value.trim();
+      const type = $('formType').value;
+      if (!name || !type) { showToast('Name and Type required', 'error'); return; }
+
+      const computedIngredientCost = state.formIngredientDraft.reduce((sum, i) => sum + ((safeParseNum(i.qty) || 0) * (safeParseNum(i.unitCost) || 0)), 0);
+      
+      const params = {
+        id: 'form_' + Date.now(),
+        name, type,
+        version: 1,
+        active_ingredient: safeParseNum($('activeIngredient').value) || 50,
+        cost: safeParseNum($('formCost').value) || computedIngredientCost || 0,
+        ingredients_json: JSON.stringify(state.formIngredientDraft),
+        ingredient_cost_total: computedIngredientCost,
+        method: $('formMethod').value || '',
+        status: 'Active',
+        created_at: new Date().toISOString()
+      };
+
+      // Add category-specific fields
+      if (type === 'Pesticide') {
+        params.pest_type = getCustomAwareValue('pestType', 'customPestType');
+        params.life_stage = $('lifeStage').value;
+        params.ld50 = safeParseNum($('ld50').value);
+        params.persistence = safeParseNum($('persistence').value) || 14;
+        params.safety_period = safeParseNum($('safetyPeriod').value) || 7;
+        params.selectivity = $('selectivity').value;
+      } else if (type === 'Fungicide') {
+        params.disease_type = getCustomAwareValue('diseaseType', 'customDiseaseType');
+        params.mode_of_action = $('modeOfAction').value;
+        params.frac_code = $('fracCode').value;
+        params.fungal_sensitivity = safeParseNum($('fungalSensitivity').value) || 80;
+        params.lesion_reduction = safeParseNum($('lesionReduction').value) || 70;
+        params.sporulation_prohibition = safeParseNum($('sporulationInhibition').value) || 80;
+      } else if (type === 'Biofertilizer') {
+        params.microbial_strain = getCustomAwareValue('microbialStrain', 'customMicrobialStrain');
+        params.cfu_concentration = $('cfuConcentration').value;
+        params.carrier_material = $('carrierMaterial').value;
+        params.viability = safeParseNum($('viability').value) || 85;
+        params.shelf_life = safeParseNum($('shelfLife').value) || 12;
+        params.nitrogen_contribution = safeParseNum($('nitrogenContribution').value) || 10;
+      }
+      
+      try {
+        await ajax('addformulation', params);
+        showToast('Formulation added', 'success');
+        // Reset form
+        $('formName').value = '';
+        $('formType').value = '';
+        updateFormulationFields();
+        $('activeIngredient').value = '50';
+        $('formCost').value = '';
+        $('formMethod').value = '';
+        state.formIngredientDraft = [];
+        renderFormIngredientDraft();
+        refreshAll();
+      } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    };
+
+    $('btnAddIngredient').onclick = async () => {
+      const name = ($('ingredientName').value || '').trim();
+      const category = $('ingredientCategory').value;
+      const unit = ($('ingredientUnit').value || 'kg').trim();
+      const cost = safeParseNum($('ingredientCost').value);
+      if (!name || cost === null) {
+        showToast('Ingredient name and unit cost are required', 'error');
+        return;
+      }
+
+      const existingIdx = state.ingredients.findIndex(i => String(i.name).toLowerCase() === name.toLowerCase());
+      const payload = {
+        id: existingIdx >= 0 ? state.ingredients[existingIdx].id : ('ing_' + Date.now()),
+        name,
+        category,
+        unit,
+        cost,
+        supplier: ($('ingredientSupplier').value || '').trim(),
+        notes: ($('ingredientNotes').value || '').trim(),
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        if (!state.scriptUrl) {
+          showToast('Configure Script URL. Google Sheet is the single source of truth.', 'error');
+          return;
+        }
+
+        await ajax('addingredient', payload);
+        await refreshAll();
+        showToast(existingIdx >= 0 ? 'Ingredient updated in Google Sheet' : 'Ingredient saved to Google Sheet', 'success');
+
+        $('ingredientName').value = '';
+        $('ingredientCost').value = '';
+        $('ingredientSupplier').value = '';
+        $('ingredientNotes').value = '';
+      } catch (err) {
+        // Queue retry only; do not mutate local records.
+        state.syncQueue.push({ action: 'addingredient', data: payload, timestamp: Date.now() });
+        localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+        updateQueueUI();
+        renderDataHealth();
+        showToast('Sheet sync failed; queued for retry: ' + err.message, 'warning');
+      }
+    };
+
+    window.deleteIngredient = async (id) => {
+      if (!id) return;
+      if (!confirm('Delete this ingredient from Google Sheet?')) return;
+      try {
+        await ajax('deleteingredient', { id });
+        await refreshAll();
+        showToast('Ingredient removed from Google Sheet', 'success');
+      } catch (err) {
+        showToast('Delete failed: ' + err.message, 'error');
+      }
+    };
+
+    $('btnAddFormIngredient').onclick = () => {
+      const name = $('formIngredientName').value;
+      const qty = safeParseNum($('formIngredientQty').value);
+      const unit = ($('formIngredientUnit').value || 'kg').trim();
+      if (!name || qty === null || qty <= 0) {
+        showToast('Select ingredient and valid quantity', 'error');
+        return;
+      }
+      const unitCost = findIngredientCostByName(name);
+      if (unitCost <= 0) {
+        showToast('No cost found for this ingredient. Add it in Ingredient Costs tab first.', 'warning');
+        return;
+      }
+      state.formIngredientDraft.push({ name, qty, unit, unitCost });
+      renderFormIngredientDraft();
+      $('formIngredientQty').value = '1';
+    };
+
+    $('btnClearFormIngredients').onclick = () => {
+      state.formIngredientDraft = [];
+      renderFormIngredientDraft();
+    };
+
+    window.removeFormIngredient = (idx) => {
+      state.formIngredientDraft.splice(idx, 1);
+      renderFormIngredientDraft();
+    };
+
+    $('btnExportIngredients').onclick = () => {
+      const blob = new Blob([JSON.stringify(state.ingredients, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ingredient-master-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    };
+
+    window.exportFullBackup = () => {
+      const backup = {
+        settings: state.settings,
+        ingredients: state.ingredients,
+        formulations: state.formulations,
+        trials: state.trials,
+        observations: state.observations,
+        syncQueue: state.syncQueue,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agri-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      showToast('Full backup exported', 'success');
+    };
+
+    window.triggerImportBackup = () => $('importBackupFile').click();
+
+    window.clearSyncQueueOnly = () => {
+      state.syncQueue = [];
+      localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+      updateQueueUI();
+      renderDataHealth();
+      showToast('Pending sync queue cleared', 'success');
+    };
+
+    $('importBackupFile').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (data.settings && typeof data.settings === 'object') {
+          state.settings = { ...state.settings, ...data.settings };
+          localStorage.setItem('agri-settings', JSON.stringify(state.settings));
+        }
+
+        if (!state.scriptUrl) {
+          throw new Error('Configure Script URL first. Import sync writes to Google Sheet only.');
+        }
+
+        const tasks = [];
+
+        if (Array.isArray(data.ingredients)) {
+          data.ingredients.forEach(item => tasks.push(ajax('addingredient', item)));
+        }
+
+        if (Array.isArray(data.formulations)) {
+          data.formulations.forEach(item => tasks.push(ajax('upsertformulation', item)));
+        }
+
+        if (Array.isArray(data.trials)) {
+          data.trials.forEach(item => tasks.push(ajax('upserttrial', item)));
+        }
+
+        if (Array.isArray(data.observations)) {
+          data.observations.forEach(item => tasks.push(ajax('upsertobservation', item)));
+        }
+
+        if (data.settings && typeof data.settings === 'object') {
+          tasks.push(ajax('savesettings', {
+            id: 'default',
+            org_name: state.settings.orgName || 'Miklens Crop Protection',
+            currency: state.settings.currency || '₹',
+            auto_sync: state.settings.autoSync !== false,
+            script_url: state.scriptUrl,
+            google_sheet_url: state.settings.googleSheetUrl || '',
+            google_drive_folder_url: state.settings.googleDriveFolderUrl || '',
+            google_sheet_id: state.settings.googleSheetId || '',
+            google_drive_folder_id: state.settings.googleDriveFolderId || ''
+          }));
+        }
+
+        await Promise.all(tasks);
+        await refreshAll();
+        showToast('Backup imported and synced to Google Sheet', 'success');
+        renderIngredientMaster();
+        renderFormIngredientDraft();
+        renderDataHealth();
+      } catch (err) {
+        showToast('Import failed: ' + err.message, 'error');
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    $('btnAddTrial').onclick = async () => {
+      const name = $('trialName').value.trim();
+      const type = $('trialType').value;
+      const formId = $('trialFormulation').value;
+      if (!name || !type || !formId) { showToast('Name, Type, and Formulation required', 'error'); return; }
+      
+      const params = {
+        id: 'trial_' + Date.now(),
+        name, type, 
+        formulation_id: formId,
+        crop_type: $('cropType').value || '',
+        crop_stage: $('cropStage').value || '',
+        replications: safeParseNum($('replications').value) || 4,
+        obs_schedule: $('obsSchedule').value || '1,3,5,7,14,21',
+        location: $('trialLocation').value || '',
+        latitude: safeParseNum($('trialLatitude').value),
+        longitude: safeParseNum($('trialLongitude').value),
+        start_date: $('trialStart').value,
+        end_date: $('trialEnd').value,
+        status: 'Active',
+        observations: [],
+        created_at: new Date().toISOString()
+      };
+      
+      try {
+        await ajax('addtrial', params);
+        showToast('Trial created', 'success');
+        // Reset form
+        $('trialName').value = '';
+        $('trialType').value = '';
+        $('trialFormulation').value = '';
+        $('cropType').value = '';
+        $('trialLatitude').value = '';
+        $('trialLongitude').value = '';
+        refreshAll();
+      } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    };
+
+    function buildReportRows() {
+      return state.trials.map(trial => {
+        const trialObs = state.observations.filter(o => o.trial_id == trial.id);
+        const damages = trialObs.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+        const meanDamage = damages.length ? (damages.reduce((a,b) => a+b, 0) / damages.length) : 0;
+        const efficacy = (100 - meanDamage).toFixed(1);
+        return {
+          trial: trial.name || '-',
+          type: trial.type || '-',
+          location: trial.location || '-',
+          gps: `${formatCoordinate(trial.latitude)}, ${formatCoordinate(trial.longitude)}`,
+          reps: trial.replications || 0,
+          obsCount: trialObs.length,
+          efficacy
+        };
+      });
+    }
+
+    function renderReportPreview() {
+      const stats = computeAggregateStats();
+      const rows = buildReportRows();
+      $('reportPrintArea').innerHTML = `
+        <h2 style="margin:0 0 6px;color:#047857;">Miklens Crop Protection Ready Report</h2>
+        <p style="margin:0 0 10px;color:#64748b;">Generated: ${new Date().toLocaleString()}</p>
+        <p style="margin:0 0 12px;"><strong>Formulations:</strong> ${state.formulations.length} | <strong>Trials:</strong> ${state.trials.length} | <strong>Observations:</strong> ${state.observations.length}</p>
+        <p style="margin:0 0 12px;"><strong>Average Efficacy:</strong> ${stats.avgEfficacy}% | <strong>CV:</strong> ${stats.cv}% (${interpretCV(stats.cv)})</p>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#e2e8f0;">
+              <th style="padding:6px;border:1px solid #cbd5e1;">Trial</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Type</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Location</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Efficacy %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `<tr><td style="padding:6px;border:1px solid #e2e8f0;">${r.trial}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.type}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.location}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.efficacy}</td></tr>`).join('') || '<tr><td colspan="4" style="padding:8px;text-align:center;border:1px solid #e2e8f0;">No trial data</td></tr>'}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function generatePdfReport(reportTitle, subtitle, rows) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const now = new Date();
+      doc.setFontSize(16);
+      doc.text(reportTitle, 14, 16);
+      doc.setFontSize(10);
+      doc.text(subtitle, 14, 22);
+      doc.text(`Generated: ${now.toLocaleString()}`, 14, 27);
+
+      doc.autoTable({
+        startY: 32,
+        head: [['Trial', 'Type', 'Location', 'GPS', 'Replications', 'Observations', 'Efficacy %']],
+        body: rows.map(r => [r.trial, r.type, r.location, r.gps, String(r.reps), String(r.obsCount), r.efficacy]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [5, 150, 105] }
+      });
+
+      const stats = computeAggregateStats();
+      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 130;
+      doc.setFontSize(10);
+      doc.text(`Summary Metrics: Avg Efficacy ${stats.avgEfficacy}% | CV ${stats.cv}% (${interpretCV(stats.cv)})`, 14, finalY);
+      doc.save(`${reportTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    }
+
+    window.generateFieldVisitReport = () => {
+      const rows = buildReportRows();
+      generatePdfReport('Field Visit Report', 'Daily field operations and geotagged trial status.', rows);
+      showToast('Field Visit report generated', 'success');
+    };
+
+    window.generateTrialSummaryReport = () => {
+      const rows = buildReportRows();
+      generatePdfReport('Trial Summary Report', 'Consolidated trial performance overview.', rows);
+      showToast('Trial Summary report generated', 'success');
+    };
+
+    window.generateRegulatorySnapshotReport = () => {
+      const rows = buildReportRows();
+      generatePdfReport('Regulatory Snapshot Report', 'Scientific snapshot for review and compliance.', rows);
+      showToast('Regulatory Snapshot report generated', 'success');
+    };
+
+    window.printObservationCards = () => {
+      const cardsHtml = state.observations.slice(-20).map(o => {
+        const trial = state.trials.find(t => t.id == o.trial_id);
+        return `
+          <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px;margin-bottom:10px;break-inside:avoid;">
+            <h4 style="margin:0 0 6px;color:#047857;">${trial?.name || 'Trial'}</h4>
+            <p style="margin:2px 0;font-size:12px;"><strong>Date:</strong> ${o.date || '-'}</p>
+            <p style="margin:2px 0;font-size:12px;"><strong>DAA:</strong> ${o.daa || 0} | <strong>Replication:</strong> ${o.replication || 1}</p>
+            <p style="margin:2px 0;font-size:12px;"><strong>Damage:</strong> ${o.damage || 0}% | <strong>Pest Count:</strong> ${o.pest_count || 0}</p>
+            <p style="margin:2px 0;font-size:12px;"><strong>Phyto:</strong> ${o.phyto || 0} | <strong>Disease:</strong> ${o.disease_severity || 0}</p>
+            <p style="margin:2px 0;font-size:12px;"><strong>Image Type:</strong> ${(o.image_type || '').replace(/_/g, ' ') || '-'}</p>
+            <p style="margin:2px 0;font-size:12px;"><strong>Notes:</strong> ${o.notes || '-'}</p>
+          </div>
+        `;
+      }).join('');
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        showToast('Popup blocked. Allow popups to print cards.', 'error');
+        return;
+      }
+      printWindow.document.write(`
+        <html><head><title>Observation Cards</title></head>
+        <body style="font-family:Segoe UI,Arial,sans-serif;padding:14px;">
+          <h2>Observation Cards</h2>
+          <p>Generated: ${new Date().toLocaleString()}</p>
+          ${cardsHtml || '<p>No observations available.</p>'}
+          <script>window.onload = function(){ window.print(); }<\/script>
+        </body></html>
+      `);
+      printWindow.document.close();
+      showToast('Print cards prepared', 'success');
+    };
+
+    window.refreshReportPreview = renderReportPreview;
+    window.printCurrentReport = () => {
+      renderReportPreview();
+      window.print();
+    };
+
+    function setObservationImage(dataUrl) {
+      const value = dataUrl || '';
+      $('obsImage').value = value;
+      if (value) {
+        $('obsImagePreview').src = value;
+        $('obsImagePreview').style.display = 'block';
+      } else {
+        $('obsImagePreview').src = '';
+        $('obsImagePreview').style.display = 'none';
+      }
+    }
+
+    $('obsImageFile').addEventListener('change', function (e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        setObservationImage(String(reader.result || ''));
+        showToast('Image selected for observation', 'success');
+      };
+      reader.onerror = function () {
+        showToast('Could not read selected image', 'error');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $('btnClearObsImage').onclick = () => {
+      setObservationImage('');
+      $('obsImageFile').value = '';
+      $('obsImageType').value = '';
+      showToast('Observation image cleared', 'info');
+    };
+
+    $('btnAddObservation').onclick = async () => {
+      const trialId = $('obsTrial').value;
+      const date = $('obsDate').value;
+      if (!trialId || !date) { showToast('Trial and Date required', 'error'); return; }
+      
+      const params = {
+        id: 'obs_' + Date.now(),
+        trial_id: trialId,
+        date,
+        daa: safeParseNum($('obsDaa').value) || 0,
+        replication: safeParseNum($('obsReplication').value) || 1,
+        damage: safeParseNum($('obsDamage').value) || 0,
+        pest_count: safeParseNum($('obsPestCount').value) || 0,
+        phyto: safeParseNum($('obsPhyto').value) || 0,
+        disease_severity: safeParseNum($('diseaseSeverity').value) || 0,
+        efficacy_rating: $('efficacyRating').value || '',
+        notes: $('obsNotes').value,
+        image_url: $('obsImage').value || '',
+        image_type: $('obsImageType').value || '',
+        created_at: new Date().toISOString()
+      };
+      
+      try {
+        await ajax('addobservation', params);
+        showToast('Observation saved', 'success');
+        // Reset form
+        $('obsDate').value = '';
+        $('obsDaa').value = '0';
+        $('obsDamage').value = '0';
+        $('obsNotes').value = '';
+        $('obsPhyto').value = '0';
+        $('diseaseSeverity').value = '0';
+        $('efficacyRating').value = '';
+        $('obsImageType').value = '';
+        $('obsImageFile').value = '';
+        setObservationImage('');
+        refreshAll();
+      } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    };
+
+    // ===== CAMERA & FILE OPERATIONS =====
+    async function openCamera() {
+      $('cameraModal').classList.add('active');
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        $('cameraVideo').srcObject = cameraStream;
+      } catch(err) {
+        showToast('Camera access denied', 'error');
+        $('cameraModal').classList.remove('active');
+      }
+    }
+
+    $('btnOpenCamera').onclick = openCamera;
+
+    $('btnCapturePhoto').onclick = () => {
+      const video = $('cameraVideo');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      $('cameraPreview').src = canvas.toDataURL('image/jpeg');
+      $('cameraPreview').style.display = 'block';
+      $('btnUsePhoto').style.display = 'block';
+    };
+
+    $('btnUsePhoto').onclick = () => {
+      setObservationImage($('cameraPreview').src);
+      if (!$('obsImageType').value) $('obsImageType').value = 'field_overview';
+      showToast('Photo set on observation', 'success');
+      $('cameraModal').classList.remove('active');
+      if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+    };
+
+    // ===== CALCULATORS =====
+    function openBatchCalculator() {
+      $('batchModal').classList.add('active');
+    }
+
+    $('btnCalculateBatch').onclick = openBatchCalculator;
+
+    document.addEventListener('change', function(e) {
+      if (e.target.id === 'labBatch' || e.target.id === 'fieldFactor' || e.target.id === 'commercialFactor') {
+        const lab = safeParseNum($('labBatch').value) || 100;
+        const field = safeParseNum($('fieldFactor').value) || 10;
+        const commercial = safeParseNum($('commercialFactor').value) || 100;
+        
+        const fieldBatch = (lab * field).toFixed(2);
+        const commercialBatch = (lab * commercial).toFixed(2);
+        
+        $('batchResults').innerHTML = `
+          <div style="background: rgba(5, 150, 105, 0.05); padding: 16px; border-radius: 8px;">
+            <strong>Batch Scaling Results:</strong><br>
+            Lab Size: ${lab}g<br>
+            Field Trial: ${fieldBatch}g<br>
+            Commercial: ${commercialBatch}g<br>
+            <br><small style="color: var(--text-light);">These are calculated batches. Adjust factors as needed for your requirements.</small>
+          </div>
+        `;
+      }
+    });
+
+    function openCostCalculator() {
+      $('costModal').classList.add('active');
+    }
+
+    $('btnCalculateCost').onclick = openCostCalculator;
+
+    function calculateCostEffectiveness() {
+      const cost = safeParseNum($('costPerUnit').value) || 0;
+      const batchSize = safeParseNum($('batchCostSize').value) || 100;
+      const area = safeParseNum($('appliedArea').value) || 1;
+      const yieldInc = safeParseNum($('yieldIncrease').value) || 0;
+      const prodPrice = safeParseNum($('productPrice').value) || 0;
+
+      const costPerHa = (cost * (1000 / batchSize)) / area;
+      const additionalRevenue = (yieldInc / 100) * area * prodPrice;
+      const roi = costPerHa === 0 ? 0 : ((additionalRevenue - costPerHa) / costPerHa) * 100;
+
+      $('costResults').innerHTML = `
+        <div style="background: rgba(16, 185, 129, 0.05); padding: 16px; border-radius: 8px;">
+          <strong>Cost-Effectiveness Analysis:</strong><br>
+          Cost per Hectare: ₹${costPerHa.toFixed(2)}<br>
+          Additional Revenue: ₹${additionalRevenue.toFixed(2)}<br>
+          Net Benefit: ₹${(additionalRevenue - costPerHa).toFixed(2)}<br>
+          <strong style="color: var(--primary);">ROI: ${roi.toFixed(1)}%</strong><br>
+          <br><small style="color: var(--text-light);">This is a simplified estimate. Include all costs for accurate analysis.</small>
+        </div>
+      `;
+    }
+
+    // ===== EXPORT FUNCTIONS =====
+    window.exportAsCSV = () => {
+      const rows = [['Trial', 'Date', 'DAA', 'Damage%', 'Pest Count', 'Phyto', 'Disease', 'Efficacy', 'Notes']];
+      state.observations.forEach(o => {
+        const trial = state.trials.find(t => t.id == o.trial_id);
+        rows.push([trial?.name || '', o.date, o.daa || 0, o.damage, o.pest_count, o.phyto, o.disease_severity || '', o.efficacy_rating || '', o.notes]);
+      });
+      const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `observations-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    };
+
+    window.exportAsJSON = () => {
+      const data = { 
+        formulations: state.formulations, 
+        trials: state.trials, 
+        observations: state.observations,
+        exportDate: new Date().toISOString()
+      };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `data-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    };
+
+    window.exportAsPDF = async () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      doc.setFontSize(16);
+      doc.text('Miklens Crop Protection - Data Report', 20, 20);
+      
+      doc.setFontSize(12);
+      let yPos = 40;
+      
+      doc.text(`Report Date: ${new Date().toLocaleDateString()}`, 20, yPos);
+      yPos += 10;
+      
+      doc.text(`Total Formulations: ${state.formulations.length}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Total Trials: ${state.trials.length}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Total Observations: ${state.observations.length}`, 20, yPos);
+      yPos += 16;
+      
+      const stats = computeAggregateStats();
+      doc.text(`Average Efficacy: ${stats.avgEfficacy}%`, 20, yPos);
+      yPos += 6;
+      doc.text(`CV (Data Quality): ${stats.cv}% (${interpretCV(stats.cv)})`, 20, yPos);
+      yPos += 12;
+      
+      doc.text('Formulations Summary:', 20, yPos);
+      yPos += 8;
+      state.formulations.slice(0, 5).forEach(f => {
+        doc.setFontSize(10);
+        doc.text(`- ${f.name} (${f.type})`, 25, yPos);
+        yPos += 6;
+      });
+      
+      doc.save(`report-${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('PDF exported', 'success');
+    };
+
+    window.exportAsXLSX = () => {
+      // Simplified XLSX export (requires external library like SheetJS)
+      // For now, use CSV as alternative
+      showToast('Excel export coming soon - use CSV for now', 'info');
+    };
+
+    // ===== INITIALIZATION =====
+    document.addEventListener('DOMContentLoaded', () => {
+      $('scriptUrl').value = state.scriptUrl;
+      localStorage.setItem('agri-script-url', state.scriptUrl || '');
+
+      if (location.protocol === 'file:') {
+        showToast('Opened as file://. Use http://localhost:5500/index.html for reliable Google Sheet sync.', 'warning');
+      }
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => setActiveTab(btn.dataset.tab);
+      });
+
+      $('btnSaveUrl').onclick = async () => {
+        state.scriptUrl = normalizeScriptUrl($('scriptUrl').value);
+        $('scriptUrl').value = state.scriptUrl;
+        localStorage.setItem('agri-script-url', state.scriptUrl);
+        state.settings.orgName = ($('settingOrgName').value || '').trim() || 'Miklens Crop Protection';
+        state.settings.currency = $('settingCurrency').value || '₹';
+        state.settings.autoSync = $('settingAutoSync').value === 'true';
+        state.settings.googleSheetUrl = ($('settingGoogleSheetUrl').value || '').trim();
+        state.settings.googleDriveFolderUrl = ($('settingGoogleDriveFolderUrl').value || '').trim();
+        state.settings.googleSheetId = extractGoogleSheetId(state.settings.googleSheetUrl);
+        state.settings.googleDriveFolderId = extractGoogleDriveFolderId(state.settings.googleDriveFolderUrl);
+
+        $('settingGoogleSheetIdPreview').textContent = state.settings.googleSheetId || '-';
+        $('settingGoogleDriveFolderIdPreview').textContent = state.settings.googleDriveFolderId || '-';
+
+        localStorage.setItem('agri-settings', JSON.stringify(state.settings));
+
+        if (!state.scriptUrl) {
+          showToast('Please enter Apps Script Web App URL', 'error');
+          return;
+        }
+
+        try {
+          if (state.settings.googleSheetId) {
+            await ajaxGetWithParams('bindsheetid', { id: state.settings.googleSheetId });
+            await ajaxGetWithParams('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
+          }
+
+          await ajax('savesettings', {
+            id: 'default',
+            org_name: state.settings.orgName,
+            currency: state.settings.currency,
+            auto_sync: state.settings.autoSync,
+            script_url: state.scriptUrl,
+            google_sheet_url: state.settings.googleSheetUrl,
+            google_drive_folder_url: state.settings.googleDriveFolderUrl,
+            google_sheet_id: state.settings.googleSheetId,
+            google_drive_folder_id: state.settings.googleDriveFolderId
+          });
+
+          const db = await ajax('dbinfo');
+          lastDbInfo = db;
+          showToast('Configuration saved and backend verified', 'success');
+          renderDataHealth();
+          await refreshAll();
+        } catch (err) {
+          showToast('Settings saved locally, but backend failed: ' + err.message, 'error');
+        }
+      };
+
+      $('btnCaptureGps').onclick = captureTrialLocation;
+
+      $('btnRefreshData').onclick = refreshAll;
+      $('btnClearLocal').onclick = () => {
+        if (confirm('Clear all local data? This cannot be undone.')) {
+          localStorage.clear();
+          location.reload();
+        }
+      };
+
+      window.addEventListener('online', () => {
+        state.isOnline = true;
+        $('syncStatus').classList.remove('offline');
+        $('syncStatus').classList.add('online');
+        $('syncStatus').innerHTML = '<div class="status-dot"></div><span>Online</span>';
+        syncQueue();
+      });
+
+      window.addEventListener('offline', () => {
+        state.isOnline = false;
+        $('syncStatus').classList.remove('online');
+        $('syncStatus').classList.add('offline');
+        $('syncStatus').innerHTML = '<div class="status-dot"></div><span>Offline</span>';
+      });
+
+      $('settingOrgName').value = state.settings.orgName || 'Miklens Crop Protection';
+      $('settingCurrency').value = state.settings.currency || '₹';
+      $('settingAutoSync').value = String(state.settings.autoSync !== false);
+      $('settingGoogleSheetUrl').value = state.settings.googleSheetUrl || '';
+      $('settingGoogleDriveFolderUrl').value = state.settings.googleDriveFolderUrl || '';
+      $('settingGoogleSheetIdPreview').textContent = state.settings.googleSheetId || extractGoogleSheetId(state.settings.googleSheetUrl || '') || '-';
+      $('settingGoogleDriveFolderIdPreview').textContent = state.settings.googleDriveFolderId || extractGoogleDriveFolderId(state.settings.googleDriveFolderUrl || '') || '-';
+
+      renderIngredientMaster();
+      renderFormIngredientDraft();
+      renderDataHealth();
+
+      if (state.scriptUrl) {
+        refreshAll();
+      } else {
+        showToast('Google Sheet not connected. Open Settings and save Apps Script URL.', 'warning');
+      }
+      updateQueueUI();
+      renderReportPreview();
+    });
+  </script>
+</body>
+</html>
