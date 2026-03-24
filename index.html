@@ -1694,6 +1694,37 @@
       localStorage.setItem('agri-ingredients', JSON.stringify(state.ingredients));
     }
 
+    function upsertByIdLocal(arr, item) {
+      if (!Array.isArray(arr) || !item || !item.id) return;
+      const idx = arr.findIndex(x => String(x.id) === String(item.id));
+      if (idx >= 0) arr[idx] = { ...arr[idx], ...item };
+      else arr.unshift(item);
+    }
+
+    function removeByIdLocal(arr, id) {
+      if (!Array.isArray(arr)) return;
+      const idx = arr.findIndex(x => String(x.id) === String(id));
+      if (idx >= 0) arr.splice(idx, 1);
+    }
+
+    function queueForSync(action, data) {
+      state.syncQueue.push({ action, data, timestamp: Date.now() });
+      localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+      updateQueueUI();
+      renderDataHealth();
+    }
+
+    function renderAllLocal() {
+      renderFormulations();
+      renderTrials();
+      renderObservations();
+      renderIngredientMaster();
+      if ($('dashboard').classList.contains('active')) renderDashboard();
+      if ($('fieldmap').classList.contains('active')) renderFieldMap();
+      if ($('reports').classList.contains('active')) renderReportPreview();
+      renderDataHealth();
+    }
+
     function findIngredientCostByName(name) {
       const hit = state.ingredients.find(i => String(i.name).toLowerCase() === String(name || '').toLowerCase());
       return hit ? (safeParseNum(hit.cost) || 0) : 0;
@@ -1812,11 +1843,19 @@
 
       try {
         const actions = ['listformulations', 'listtrials', 'listobservations', 'listingredients', 'dbinfo'];
-        const settled = await Promise.allSettled(actions.map(a => ajax(a)));
+        // Run sequentially — parallel calls overload Apps Script concurrent execution limits.
+        const settled = [];
+        for (const a of actions) {
+          settled.push(await Promise.allSettled([ajax(a)]).then(r => r[0]));
+        }
 
         state.connectionTestResults = settled.map(function (res, idx) {
           const action = actions[idx];
           if (res.status === 'fulfilled') {
+            // Save dbinfo result so Bound Spreadsheet section populates.
+            if (action === 'dbinfo' && res.value && typeof res.value === 'object' && res.value.ok) {
+              lastDbInfo = res.value;
+            }
             let extra = '';
             if (Array.isArray(res.value)) extra = `(${res.value.length} records)`;
             else if (res.value && typeof res.value === 'object' && res.value.ok) extra = '(ok)';
@@ -2023,7 +2062,7 @@
       };
 
       try {
-        const res = await fetchWithTimeout(targetUrl, opts, 12000);
+        const res = await fetchWithTimeout(targetUrl, opts, 35000); // Apps Script cold-start can take 20-30s
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} ${res.statusText}`);
         }
@@ -2076,6 +2115,13 @@
       if (sentCount > 0) {
         await refreshAll();
       }
+    }
+
+    function scheduleBackgroundSync() {
+      if (!state.scriptUrl || !state.isOnline) return;
+      setTimeout(() => {
+        syncQueue();
+      }, 50);
     }
 
     function updateQueueUI() {
@@ -2592,9 +2638,11 @@
       }
       
       try {
-        await ajax('addformulation', params);
-        showToast('Formulation added', 'success');
-        // Reset form
+        // Optimistic local update for instant UX.
+        upsertByIdLocal(state.formulations, params);
+        renderAllLocal();
+
+        // Reset form immediately after local save.
         $('formName').value = '';
         $('formType').value = '';
         updateFormulationFields();
@@ -2603,9 +2651,18 @@
         $('formMethod').value = '';
         state.formIngredientDraft = [];
         renderFormIngredientDraft();
-        refreshAll();
+
+        showToast('Saved locally. Syncing with Google Sheet...', 'info');
+        await ajax('addformulation', params);
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Formulation synced', 'success');
       } catch(err) {
-        showToast('Error: ' + err.message, 'error');
+        queueForSync('addformulation', params);
+        showToast('Saved locally. Will sync later: ' + err.message, 'warning');
+        scheduleBackgroundSync();
       }
     };
 
@@ -2632,38 +2689,59 @@
       };
 
       try {
-        if (!state.scriptUrl) {
-          showToast('Configure Script URL. Google Sheet is the single source of truth.', 'error');
-          return;
-        }
-
-        await ajax('addingredient', payload);
-        await refreshAll();
-        showToast(existingIdx >= 0 ? 'Ingredient updated in Google Sheet' : 'Ingredient saved to Google Sheet', 'success');
+        // Optimistic local upsert for immediate reflect.
+        upsertByIdLocal(state.ingredients, payload);
+        persistIngredients();
+        renderAllLocal();
 
         $('ingredientName').value = '';
         $('ingredientCost').value = '';
         $('ingredientSupplier').value = '';
         $('ingredientNotes').value = '';
-      } catch (err) {
-        // Queue retry only; do not mutate local records.
-        state.syncQueue.push({ action: 'addingredient', data: payload, timestamp: Date.now() });
-        localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
-        updateQueueUI();
+
+        showToast('Saved locally. Syncing with Google Sheet...', 'info');
+
+        if (!state.scriptUrl) throw new Error('Apps Script URL not configured');
+        await ajax('addingredient', payload);
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
         renderDataHealth();
-        showToast('Sheet sync failed; queued for retry: ' + err.message, 'warning');
+        showToast(existingIdx >= 0 ? 'Ingredient updated and synced' : 'Ingredient added and synced', 'success');
+      } catch (err) {
+        queueForSync('addingredient', payload);
+        showToast('Saved locally. Sheet sync queued: ' + err.message, 'warning');
+        scheduleBackgroundSync();
       }
     };
 
     window.deleteIngredient = async (id) => {
       if (!id) return;
       if (!confirm('Delete this ingredient from Google Sheet?')) return;
+
+      // Optimistic remove for immediate UX.
+      const backup = state.ingredients.slice();
+      removeByIdLocal(state.ingredients, id);
+      persistIngredients();
+      renderAllLocal();
+
       try {
+        if (!state.scriptUrl) throw new Error('Apps Script URL not configured');
         await ajax('deleteingredient', { id });
-        await refreshAll();
-        showToast('Ingredient removed from Google Sheet', 'success');
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Ingredient removed and synced', 'success');
       } catch (err) {
-        showToast('Delete failed: ' + err.message, 'error');
+        // Keep local delete and queue remote delete.
+        state.ingredients = backup.filter(i => String(i.id) !== String(id));
+        removeByIdLocal(state.ingredients, id);
+        persistIngredients();
+        queueForSync('deleteingredient', { id });
+        renderAllLocal();
+        showToast('Deleted locally. Sheet delete queued: ' + err.message, 'warning');
+        scheduleBackgroundSync();
       }
     };
 
@@ -2819,18 +2897,29 @@
       };
       
       try {
-        await ajax('addtrial', params);
-        showToast('Trial created', 'success');
-        // Reset form
+        // Optimistic local update for instant UX.
+        upsertByIdLocal(state.trials, params);
+        renderAllLocal();
+
+        // Reset form immediately after local save.
         $('trialName').value = '';
         $('trialType').value = '';
         $('trialFormulation').value = '';
         $('cropType').value = '';
         $('trialLatitude').value = '';
         $('trialLongitude').value = '';
-        refreshAll();
+
+        showToast('Saved locally. Syncing with Google Sheet...', 'info');
+        await ajax('addtrial', params);
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Trial synced', 'success');
       } catch(err) {
-        showToast('Error: ' + err.message, 'error');
+        queueForSync('addtrial', params);
+        showToast('Saved locally. Will sync later: ' + err.message, 'warning');
+        scheduleBackgroundSync();
       }
     };
 
@@ -3015,9 +3104,11 @@
       };
       
       try {
-        await ajax('addobservation', params);
-        showToast('Observation saved', 'success');
-        // Reset form
+        // Optimistic local update for instant UX.
+        upsertByIdLocal(state.observations, params);
+        renderAllLocal();
+
+        // Reset form immediately after local save.
         $('obsDate').value = '';
         $('obsDaa').value = '0';
         $('obsDamage').value = '0';
@@ -3028,9 +3119,18 @@
         $('obsImageType').value = '';
         $('obsImageFile').value = '';
         setObservationImage('');
-        refreshAll();
+
+        showToast('Saved locally. Syncing with Google Sheet...', 'info');
+        await ajax('addobservation', params);
+        state.backendConnected = true;
+        state.lastSyncError = '';
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Observation synced', 'success');
       } catch(err) {
-        showToast('Error: ' + err.message, 'error');
+        queueForSync('addobservation', params);
+        showToast('Saved locally. Will sync later: ' + err.message, 'warning');
+        scheduleBackgroundSync();
       }
     };
 
@@ -3286,17 +3386,17 @@
         localStorage.setItem('agri-settings', JSON.stringify(state.settings));
 
         if (!maybeScriptUrl) return;
+        // Bind sheet (optional – failure is non-fatal; API may still be reachable)
+        if (state.settings.googleSheetId) {
+          try { await ajax('bindsheetid', { id: state.settings.googleSheetId }); } catch (_) {}
+          try { await ajax('firsttimeinit', { spreadsheetId: state.settings.googleSheetId }); } catch (_) {}
+        }
         try {
-          if (state.settings.googleSheetId) {
-            await ajax('bindsheetid', { id: state.settings.googleSheetId });
-            await ajax('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
-          }
           await runConnectionTest();
           await refreshAll();
         } catch (err) {
           state.lastSyncError = 'Auto-connect failed: ' + (err.message || String(err));
-          state.backendConnected = false;
-          setConnectivityStatus();
+          // Do NOT set backendConnected=false here — the connection test result governs that.
           renderDataHealth();
           showToast(state.lastSyncError, 'warning');
         }
@@ -3337,6 +3437,9 @@
       }
       updateQueueUI();
       renderReportPreview();
+
+      // Keep trying queued writes in the background for eventually-consistent sync.
+      setInterval(syncQueue, 15000);
     });
   </script>
 </body>
