@@ -1364,6 +1364,7 @@
             <div class="export-buttons">
               <button class="btn-primary btn-sm" onclick="window.exportFullBackup()">📦 Export Full Backup</button>
               <button class="btn-secondary btn-sm" onclick="window.triggerImportBackup()">📤 Import Backup</button>
+              <button class="btn-secondary btn-sm" id="btnConnectionTest">🧪 Connection Test</button>
               <button class="btn-secondary btn-sm" onclick="window.clearSyncQueueOnly()">🧹 Clear Pending Queue</button>
             </div>
             <input id="importBackupFile" type="file" accept="application/json" style="display:none;">
@@ -1577,7 +1578,8 @@
       map: null,
       mapMarkers: [],
       backendConnected: false,
-      lastSyncError: ''
+      lastSyncError: '',
+      connectionTestResults: []
     };
 
     const $ = id => document.getElementById(id);
@@ -1610,6 +1612,21 @@
       if (/\/dev$/i.test(clean)) clean = clean.replace(/\/dev$/i, '/exec');
       if (/\/macros\/s\//i.test(clean) && !/\/(exec|dev)$/i.test(clean)) clean += '/exec';
       return clean;
+    }
+
+    function getEffectiveScriptUrl() {
+      const stateUrl = normalizeScriptUrl(state.scriptUrl || '');
+      if (stateUrl) return stateUrl;
+
+      const input = $('scriptUrl');
+      const inputUrl = normalizeScriptUrl(input ? input.value : '');
+      if (inputUrl) {
+        state.scriptUrl = inputUrl;
+        localStorage.setItem('agri-script-url', inputUrl);
+        return inputUrl;
+      }
+
+      return '';
     }
 
     function updateFormulationFields() {
@@ -1719,12 +1736,24 @@
     function renderDataHealth() {
       const el = $('dataHealthInfo');
       if (!el) return;
+      const apiUrl = getEffectiveScriptUrl();
+      const testRows = (state.connectionTestResults || []).map(function (r) {
+        const color = r.ok ? '#16a34a' : '#dc2626';
+        const label = r.ok ? 'PASS' : 'FAIL';
+        const detail = r.message ? ` - ${r.message}` : '';
+        return `<div style="font-size:0.85rem;color:${color};margin:2px 0;"><strong>${label}</strong> ${r.action}${detail}</div>`;
+      }).join('');
+      const testBlock = testRows
+        ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);"><p style="margin:0 0 6px;"><strong>Connection Test Results:</strong></p>${testRows}</div>`
+        : '<p><strong>Connection Test Results:</strong> Not run yet</p>';
+
       const dbBlock = lastDbInfo && lastDbInfo.ok ? `
         <p><strong>Bound Spreadsheet:</strong> ${lastDbInfo.spreadsheetName || '-'}</p>
         <p><strong>Spreadsheet ID:</strong> ${lastDbInfo.spreadsheetId || '-'}</p>
         <p><strong>Sheet Tabs Found:</strong> ${Array.isArray(lastDbInfo.sheetNames) ? lastDbInfo.sheetNames.length : '-'}</p>
       ` : '<p><strong>Bound Spreadsheet:</strong> Not verified yet</p>';
       el.innerHTML = `
+        <p><strong>Active API URL:</strong> ${apiUrl || '-'}</p>
         <p><strong>Sheet Connection:</strong> ${state.backendConnected ? 'Connected' : 'Disconnected'}</p>
         <p><strong>Last Sync Error:</strong> ${state.lastSyncError || '-'}</p>
         <p><strong>Formulations:</strong> ${state.formulations.length}</p>
@@ -1732,8 +1761,51 @@
         <p><strong>Observations:</strong> ${state.observations.length}</p>
         <p><strong>Ingredient Cost Records:</strong> ${state.ingredients.length}</p>
         <p><strong>Pending Sync Queue:</strong> ${state.syncQueue.length}</p>
+        ${testBlock}
         ${dbBlock}
       `;
+    }
+
+    async function runConnectionTest() {
+      const baseUrl = getEffectiveScriptUrl();
+      if (!baseUrl) {
+        state.connectionTestResults = [{ action: 'config', ok: false, message: 'Apps Script URL not configured' }];
+        renderDataHealth();
+        showToast('Please configure Apps Script URL first', 'error');
+        return;
+      }
+
+      const actions = ['listformulations', 'listtrials', 'listobservations', 'listingredients', 'dbinfo'];
+      const settled = await Promise.allSettled(actions.map(a => ajax(a)));
+
+      state.connectionTestResults = settled.map(function (res, idx) {
+        const action = actions[idx];
+        if (res.status === 'fulfilled') {
+          let extra = '';
+          if (Array.isArray(res.value)) extra = `(${res.value.length} records)`;
+          else if (res.value && typeof res.value === 'object' && res.value.ok) extra = '(ok)';
+          return { action, ok: true, message: extra };
+        }
+        const message = String(res.reason && res.reason.message ? res.reason.message : res.reason || 'Unknown error');
+        return { action, ok: false, message };
+      });
+
+      const passCount = state.connectionTestResults.filter(r => r.ok).length;
+      state.backendConnected = passCount > 0;
+      state.lastSyncError = passCount === actions.length
+        ? ''
+        : state.connectionTestResults.filter(r => !r.ok).map(r => `${r.action}: ${r.message}`).join(' | ');
+
+      setConnectivityStatus();
+      renderDataHealth();
+
+      if (passCount === actions.length) {
+        showToast('Connection test passed for all endpoints', 'success');
+      } else if (passCount > 0) {
+        showToast('Connection test partially passed', 'warning');
+      } else {
+        showToast('Connection test failed for all endpoints', 'error');
+      }
     }
 
     function setConnectivityStatus() {
@@ -1885,7 +1957,8 @@
 
     // ===== API & SYNC =====
     async function ajax(action, data) {
-      if (!state.scriptUrl) throw new Error('App Script URL not configured');
+      const baseUrl = getEffectiveScriptUrl();
+      if (!baseUrl) throw new Error('App Script URL not configured');
 
       // Use simple CORS requests to avoid browser preflight failures with Apps Script.
       const isWrite = !!data;
@@ -1896,7 +1969,7 @@
         opts.body = new URLSearchParams({ payload: JSON.stringify(data) }).toString();
       }
 
-      const targetUrl = `${state.scriptUrl}?action=${encodeURIComponent(action)}`;
+      const targetUrl = `${baseUrl}?action=${encodeURIComponent(action)}`;
 
       try {
         const res = await fetch(targetUrl, opts);
@@ -1927,9 +2000,10 @@
     }
 
     async function ajaxGetWithParams(action, params) {
-      if (!state.scriptUrl) throw new Error('App Script URL not configured');
+      const baseUrl = getEffectiveScriptUrl();
+      if (!baseUrl) throw new Error('App Script URL not configured');
       const query = new URLSearchParams({ action: action, ...(params || {}) }).toString();
-      const res = await fetch(`${state.scriptUrl}?${query}`, { method: 'GET' });
+      const res = await fetch(`${baseUrl}?${query}`, { method: 'GET' });
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
       const json = await res.json();
       if (json && typeof json === 'object' && json.ok === false) {
@@ -2362,7 +2436,8 @@
     }
 
     async function refreshAll() {
-      if (!state.scriptUrl) {
+      const activeUrl = getEffectiveScriptUrl();
+      if (!activeUrl) {
         state.backendConnected = false;
         state.lastSyncError = 'Apps Script URL not configured';
         setConnectivityStatus();
@@ -3149,6 +3224,7 @@
       $('btnCaptureGps').onclick = captureTrialLocation;
 
       $('btnRefreshData').onclick = refreshAll;
+      $('btnConnectionTest').onclick = runConnectionTest;
       $('btnClearLocal').onclick = () => {
         if (confirm('Clear all local data? This cannot be undone.')) {
           localStorage.clear();
