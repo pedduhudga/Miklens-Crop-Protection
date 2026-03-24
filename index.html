@@ -1364,7 +1364,7 @@
             <div class="export-buttons">
               <button class="btn-primary btn-sm" onclick="window.exportFullBackup()">📦 Export Full Backup</button>
               <button class="btn-secondary btn-sm" onclick="window.triggerImportBackup()">📤 Import Backup</button>
-              <button class="btn-secondary btn-sm" id="btnConnectionTest">🧪 Connection Test</button>
+              <button class="btn-secondary btn-sm" id="btnConnectionTest" onclick="window.runConnectionTest && window.runConnectionTest()">🧪 Connection Test</button>
               <button class="btn-secondary btn-sm" onclick="window.clearSyncQueueOnly()">🧹 Clear Pending Queue</button>
             </div>
             <input id="importBackupFile" type="file" accept="application/json" style="display:none;">
@@ -1579,7 +1579,9 @@
       mapMarkers: [],
       backendConnected: false,
       lastSyncError: '',
-      connectionTestResults: []
+      connectionTestResults: [],
+      connectionTestRunning: false,
+      lastConnectionTestAt: ''
     };
 
     const $ = id => document.getElementById(id);
@@ -1627,6 +1629,21 @@
       }
 
       return '';
+    }
+
+    async function fetchWithTimeout(url, opts, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...(opts || {}), signal: controller.signal });
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          throw new Error(`Request timeout after ${Math.round(timeoutMs / 1000)}s`);
+        }
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     function updateFormulationFields() {
@@ -1755,6 +1772,7 @@
       el.innerHTML = `
         <p><strong>Active API URL:</strong> ${apiUrl || '-'}</p>
         <p><strong>Sheet Connection:</strong> ${state.backendConnected ? 'Connected' : 'Disconnected'}</p>
+        <p><strong>Connection Test:</strong> ${state.connectionTestRunning ? 'Running...' : (state.lastConnectionTestAt ? ('Last run at ' + new Date(state.lastConnectionTestAt).toLocaleTimeString()) : 'Idle')}</p>
         <p><strong>Last Sync Error:</strong> ${state.lastSyncError || '-'}</p>
         <p><strong>Formulations:</strong> ${state.formulations.length}</p>
         <p><strong>Trials:</strong> ${state.trials.length}</p>
@@ -1767,46 +1785,82 @@
     }
 
     async function runConnectionTest() {
+      const btn = $('btnConnectionTest');
+      const originalBtnText = btn ? btn.textContent : '';
+      if (state.connectionTestRunning) {
+        showToast('Connection test already running', 'info');
+        return;
+      }
+
       const baseUrl = getEffectiveScriptUrl();
       if (!baseUrl) {
         state.connectionTestResults = [{ action: 'config', ok: false, message: 'Apps Script URL not configured' }];
+        state.connectionTestRunning = false;
         renderDataHealth();
         showToast('Please configure Apps Script URL first', 'error');
         return;
       }
 
-      const actions = ['listformulations', 'listtrials', 'listobservations', 'listingredients', 'dbinfo'];
-      const settled = await Promise.allSettled(actions.map(a => ajax(a)));
-
-      state.connectionTestResults = settled.map(function (res, idx) {
-        const action = actions[idx];
-        if (res.status === 'fulfilled') {
-          let extra = '';
-          if (Array.isArray(res.value)) extra = `(${res.value.length} records)`;
-          else if (res.value && typeof res.value === 'object' && res.value.ok) extra = '(ok)';
-          return { action, ok: true, message: extra };
-        }
-        const message = String(res.reason && res.reason.message ? res.reason.message : res.reason || 'Unknown error');
-        return { action, ok: false, message };
-      });
-
-      const passCount = state.connectionTestResults.filter(r => r.ok).length;
-      state.backendConnected = passCount > 0;
-      state.lastSyncError = passCount === actions.length
-        ? ''
-        : state.connectionTestResults.filter(r => !r.ok).map(r => `${r.action}: ${r.message}`).join(' | ');
-
-      setConnectivityStatus();
+      state.connectionTestRunning = true;
+      state.connectionTestResults = [{ action: 'status', ok: true, message: 'Running endpoint checks...' }];
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Testing...';
+      }
       renderDataHealth();
+      showToast('Running connection test...', 'info');
 
-      if (passCount === actions.length) {
-        showToast('Connection test passed for all endpoints', 'success');
-      } else if (passCount > 0) {
-        showToast('Connection test partially passed', 'warning');
-      } else {
-        showToast('Connection test failed for all endpoints', 'error');
+      try {
+        const actions = ['listformulations', 'listtrials', 'listobservations', 'listingredients', 'dbinfo'];
+        const settled = await Promise.allSettled(actions.map(a => ajax(a)));
+
+        state.connectionTestResults = settled.map(function (res, idx) {
+          const action = actions[idx];
+          if (res.status === 'fulfilled') {
+            let extra = '';
+            if (Array.isArray(res.value)) extra = `(${res.value.length} records)`;
+            else if (res.value && typeof res.value === 'object' && res.value.ok) extra = '(ok)';
+            return { action, ok: true, message: extra };
+          }
+          const message = String(res.reason && res.reason.message ? res.reason.message : res.reason || 'Unknown error');
+          return { action, ok: false, message };
+        });
+
+        const passCount = state.connectionTestResults.filter(r => r.ok).length;
+        state.backendConnected = passCount > 0;
+        state.lastSyncError = passCount === actions.length
+          ? ''
+          : state.connectionTestResults.filter(r => !r.ok).map(r => `${r.action}: ${r.message}`).join(' | ');
+        state.lastConnectionTestAt = new Date().toISOString();
+
+        setConnectivityStatus();
+        renderDataHealth();
+
+        if (passCount === actions.length) {
+          showToast('Connection test passed for all endpoints', 'success');
+        } else if (passCount > 0) {
+          showToast('Connection test partially passed', 'warning');
+        } else {
+          showToast('Connection test failed for all endpoints', 'error');
+        }
+      } catch (err) {
+        state.backendConnected = false;
+        state.lastSyncError = String(err && err.message ? err.message : err || 'Connection test failed');
+        state.connectionTestResults = [{ action: 'connection_test', ok: false, message: state.lastSyncError }];
+        setConnectivityStatus();
+        renderDataHealth();
+        showToast('Connection test failed: ' + state.lastSyncError, 'error');
+      } finally {
+        state.connectionTestRunning = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalBtnText || '🧪 Connection Test';
+        }
+        renderDataHealth();
       }
     }
+
+    window.runConnectionTest = runConnectionTest;
 
     function setConnectivityStatus() {
       const el = $('syncStatus');
@@ -1972,7 +2026,7 @@
       const targetUrl = `${baseUrl}?action=${encodeURIComponent(action)}`;
 
       try {
-        const res = await fetch(targetUrl, opts);
+        const res = await fetchWithTimeout(targetUrl, opts, 12000);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} ${res.statusText}`);
         }
@@ -2003,7 +2057,7 @@
       const baseUrl = getEffectiveScriptUrl();
       if (!baseUrl) throw new Error('App Script URL not configured');
       const query = new URLSearchParams({ action: action, ...(params || {}) }).toString();
-      const res = await fetch(`${baseUrl}?${query}`, { method: 'GET' });
+      const res = await fetchWithTimeout(`${baseUrl}?${query}`, { method: 'GET' }, 12000);
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
       const json = await res.json();
       if (json && typeof json === 'object' && json.ok === false) {
@@ -3224,13 +3278,44 @@
       $('btnCaptureGps').onclick = captureTrialLocation;
 
       $('btnRefreshData').onclick = refreshAll;
-      $('btnConnectionTest').onclick = runConnectionTest;
+      const btnConnectionTest = $('btnConnectionTest');
+      if (btnConnectionTest) btnConnectionTest.onclick = runConnectionTest;
       $('btnClearLocal').onclick = () => {
         if (confirm('Clear all local data? This cannot be undone.')) {
           localStorage.clear();
           location.reload();
         }
       };
+
+      const autoConnectFromSettingsInputs = async () => {
+        const maybeScriptUrl = normalizeScriptUrl($('scriptUrl').value || '');
+        state.scriptUrl = maybeScriptUrl;
+        localStorage.setItem('agri-script-url', maybeScriptUrl || '');
+
+        state.settings.googleSheetUrl = ($('settingGoogleSheetUrl').value || '').trim();
+        state.settings.googleSheetId = extractGoogleSheetId(state.settings.googleSheetUrl);
+        $('settingGoogleSheetIdPreview').textContent = state.settings.googleSheetId || '-';
+        localStorage.setItem('agri-settings', JSON.stringify(state.settings));
+
+        if (!maybeScriptUrl) return;
+        try {
+          if (state.settings.googleSheetId) {
+            await ajaxGetWithParams('bindsheetid', { id: state.settings.googleSheetId });
+            await ajaxGetWithParams('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
+          }
+          await runConnectionTest();
+          await refreshAll();
+        } catch (err) {
+          state.lastSyncError = 'Auto-connect failed: ' + (err.message || String(err));
+          state.backendConnected = false;
+          setConnectivityStatus();
+          renderDataHealth();
+          showToast(state.lastSyncError, 'warning');
+        }
+      };
+
+      $('scriptUrl').addEventListener('change', autoConnectFromSettingsInputs);
+      $('settingGoogleSheetUrl').addEventListener('change', autoConnectFromSettingsInputs);
 
       window.addEventListener('online', () => {
         state.isOnline = true;
