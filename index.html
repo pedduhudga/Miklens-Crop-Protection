@@ -2371,21 +2371,40 @@
         return;
       }
       try {
-        const [formulations, trials, observations, ingredients, dbinfo] = await Promise.all([
+        const labels = ['formulations', 'trials', 'observations', 'ingredients', 'dbinfo'];
+        const settled = await Promise.allSettled([
           ajax('listformulations'),
           ajax('listtrials'),
           ajax('listobservations'),
           ajax('listingredients'),
           ajax('dbinfo')
         ]);
-        state.formulations = Array.isArray(formulations) ? formulations : [];
-        state.trials = Array.isArray(trials) ? trials : [];
-        state.observations = Array.isArray(observations) ? observations : [];
-        state.ingredients = Array.isArray(ingredients) ? ingredients : [];
+
+        const data = {};
+        const errors = [];
+        settled.forEach(function (r, i) {
+          const key = labels[i];
+          if (r.status === 'fulfilled') {
+            data[key] = r.value;
+          } else {
+            data[key] = null;
+            errors.push(`${key}: ${r.reason?.message || String(r.reason)}`);
+          }
+        });
+
+        // Load whatever succeeded so one bad endpoint does not blank the app.
+        if (Array.isArray(data.formulations)) state.formulations = data.formulations;
+        if (Array.isArray(data.trials)) state.trials = data.trials;
+        if (Array.isArray(data.observations)) state.observations = data.observations;
+        if (Array.isArray(data.ingredients)) state.ingredients = data.ingredients;
         persistIngredients();
-        lastDbInfo = dbinfo && typeof dbinfo === 'object' ? dbinfo : null;
-        state.backendConnected = true;
-        state.lastSyncError = '';
+        lastDbInfo = data.dbinfo && typeof data.dbinfo === 'object' ? data.dbinfo : null;
+
+        const coreLoaded = [data.formulations, data.trials, data.observations, data.ingredients]
+          .filter(v => Array.isArray(v)).length;
+
+        state.backendConnected = coreLoaded > 0;
+        state.lastSyncError = errors.length ? errors.join(' | ') : '';
         setConnectivityStatus();
         
         renderFormulations();
@@ -2396,7 +2415,11 @@
         if ($('fieldmap').classList.contains('active')) renderFieldMap();
         if ($('reports').classList.contains('active')) renderReportPreview();
         
-        showToast('Data synced successfully', 'success');
+        if (state.backendConnected) {
+          showToast(errors.length ? 'Data synced with partial API warnings' : 'Data synced successfully', errors.length ? 'warning' : 'success');
+        } else {
+          throw new Error(state.lastSyncError || 'No data endpoints responded successfully');
+        }
       } catch(err) {
         state.backendConnected = false;
         state.lastSyncError = err.message || String(err);
