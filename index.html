@@ -2014,16 +2014,13 @@
       const baseUrl = getEffectiveScriptUrl();
       if (!baseUrl) throw new Error('App Script URL not configured');
 
-      // Use simple CORS requests to avoid browser preflight failures with Apps Script.
-      const isWrite = !!data;
-      const opts = { method: isWrite ? 'POST' : 'GET' };
-      if (isWrite) {
-        // application/x-www-form-urlencoded is a CORS-simple content type.
-        opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
-        opts.body = new URLSearchParams({ payload: JSON.stringify(data) }).toString();
-      }
-
-      const targetUrl = `${baseUrl}?action=${encodeURIComponent(action)}`;
+      // Match herbicide app transport: text/plain JSON payload for all actions.
+      const targetUrl = baseUrl;
+      const opts = {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: action, payload: data || {} })
+      };
 
       try {
         const res = await fetchWithTimeout(targetUrl, opts, 12000);
@@ -2054,16 +2051,7 @@
     }
 
     async function ajaxGetWithParams(action, params) {
-      const baseUrl = getEffectiveScriptUrl();
-      if (!baseUrl) throw new Error('App Script URL not configured');
-      const query = new URLSearchParams({ action: action, ...(params || {}) }).toString();
-      const res = await fetchWithTimeout(`${baseUrl}?${query}`, { method: 'GET' }, 12000);
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-      const json = await res.json();
-      if (json && typeof json === 'object' && json.ok === false) {
-        throw new Error(json.error || 'Backend returned a failed response');
-      }
-      return json;
+      return ajax(action, params || {});
     }
 
     async function syncQueue() {
@@ -3249,8 +3237,8 @@
 
         try {
           if (state.settings.googleSheetId) {
-            await ajaxGetWithParams('bindsheetid', { id: state.settings.googleSheetId });
-            await ajaxGetWithParams('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
+            await ajax('bindsheetid', { id: state.settings.googleSheetId });
+            await ajax('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
           }
 
           await ajax('savesettings', {
@@ -3300,8 +3288,8 @@
         if (!maybeScriptUrl) return;
         try {
           if (state.settings.googleSheetId) {
-            await ajaxGetWithParams('bindsheetid', { id: state.settings.googleSheetId });
-            await ajaxGetWithParams('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
+            await ajax('bindsheetid', { id: state.settings.googleSheetId });
+            await ajax('firsttimeinit', { spreadsheetId: state.settings.googleSheetId });
           }
           await runConnectionTest();
           await refreshAll();
