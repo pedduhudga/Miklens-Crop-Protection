@@ -1180,7 +1180,7 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>Formulation Name *</label>
-                <input type="text" id="formName" placeholder="e.g., Emerald Herbicide Pro">
+                <input type="text" id="formName" placeholder="e.g., Emerald Fungicide Pro">
               </div>
               <div class="form-group">
                 <label>Category *</label>
@@ -2106,7 +2106,7 @@
               </div>
               <div class="report-card">
                 <h4>Observation Print Cards</h4>
-                <p>Printable cards for field teams, similar to herbicide app cards.</p>
+                <p>Printable cards for field teams to record trial observations.</p>
                 <button class="btn-primary btn-sm" onclick="window.printObservationCards()">Print Cards</button>
               </div>
             </div>
@@ -4935,7 +4935,7 @@
       const baseUrl = getEffectiveScriptUrl();
       if (!baseUrl) throw new Error('App Script URL not configured');
 
-      // Match herbicide app transport: text/plain JSON payload for all actions.
+      // Transport: text/plain JSON payload for all actions.
       const targetUrl = baseUrl;
       const opts = {
         method: 'POST',
