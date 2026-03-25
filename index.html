@@ -175,6 +175,9 @@
       align-items: center;
       justify-content: space-between;
       box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     header h2 {
@@ -325,31 +328,6 @@
       padding: 4px 8px;
       font-size: 0.75rem;
       margin: 2px;
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-      font-size: 0.9rem;
-    }
-
-    .data-table th {
-      background: linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%);
-      padding: 12px;
-      text-align: left;
-      font-weight: 600;
-      color: var(--primary);
-      border-bottom: 2px solid var(--primary-light);
-    }
-
-    .data-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .data-table tr:hover {
-      background: rgba(5, 150, 105, 0.02);
     }
 
     .stats-grid {
@@ -845,14 +823,210 @@
       clip-path: inset(0 50% 0 0);
     }
 
+    /* ===== NAVIGATION SECTIONS ===== */
+    .nav-section-label {
+      font-size: 0.67rem;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 14px 16px 5px;
+      margin-top: 2px;
+      pointer-events: none;
+    }
+
+    .nav-section-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 8px 14px 4px;
+    }
+
+    /* ===== HAMBURGER BUTTON ===== */
+    .hamburger-btn {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      padding: 8px 10px;
+      border-radius: 8px;
+      flex-direction: column;
+      gap: 5px;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .hamburger-btn span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .hamburger-btn:hover {
+      background: rgba(5, 150, 105, 0.08);
+      border-color: var(--primary);
+    }
+
+    .hamburger-btn:hover span {
+      background: var(--primary);
+    }
+
+    /* ===== SIDEBAR OVERLAY (mobile) ===== */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.45);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(2px);
+    }
+
+    .sidebar-overlay.active {
+      opacity: 1;
+    }
+
+    /* ===== SIDEBAR SEARCH ===== */
+    .sidebar-search-wrap {
+      padding: 10px 12px 6px;
+    }
+
+    .sidebar-search {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      background: rgba(248,250,252,0.8);
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    .sidebar-search:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5,150,105,0.1);
+      background: white;
+    }
+
+    .sidebar-search::placeholder {
+      color: #94a3b8;
+    }
+
+    /* ===== TABLE IMPROVEMENTS ===== */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      margin-top: 14px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      min-width: 480px;
+    }
+
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .data-table th {
+      background: linear-gradient(135deg, rgba(5,150,105,0.10) 0%, rgba(5,150,105,0.05) 100%);
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary-light);
+      white-space: nowrap;
+    }
+
+    .data-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .data-table th.sortable:hover {
+      background: rgba(5,150,105,0.15);
+    }
+
+    .data-table th.sortable::after {
+      content: ' ↕';
+      opacity: 0.4;
+      font-size: 0.75rem;
+    }
+
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .data-table tbody tr:hover {
+      background: rgba(5,150,105,0.04);
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ===== HEADER ROW IMPROVEMENTS ===== */
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* ===== MOBILE MEDIA QUERY ===== */
     @media (max-width: 768px) {
       .app { grid-template-columns: 1fr; }
-      .sidebar { position: absolute; left: -270px; top: 0; height: 100%; z-index: 1000; width: 270px; transition: left 0.3s; }
-      .sidebar.open { left: 0; }
+
+      .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        height: 100vh;
+        z-index: 1000;
+        width: 280px;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+      }
+
+      .sidebar.open {
+        left: 0;
+        box-shadow: 6px 0 28px rgba(0,0,0,0.18);
+      }
+
+      .sidebar-overlay { display: block; }
+      .hamburger-btn { display: flex; }
+
       .form-grid { grid-template-columns: 1fr; }
       .form-grid.three { grid-template-columns: 1fr; }
-      .stats-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
       .treatment-row { grid-template-columns: 60px 1fr 1fr; }
+
+      canvas { max-height: 250px !important; }
+      header { padding: 12px 16px; }
+      .content { padding: 14px; }
+
+      button { min-height: 44px; }
+      input, select, textarea { font-size: 16px; min-height: 44px; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      header h2 { font-size: 1.15rem; }
     }
   </style>
 </head>
@@ -864,16 +1038,32 @@
         <p>Complete Suite</p>
       </div>
 
-      <div class="tabs">
+      <div class="sidebar-search-wrap">
+        <input class="sidebar-search" id="navSearch" type="search" placeholder="🔍 Search menu…" oninput="filterNav(this.value)" autocomplete="off" />
+      </div>
+
+      <div class="tabs" id="navTabs">
         <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label">Data Entry</div>
         <button class="tab-btn" data-tab="formulations">⚗️ Formulations</button>
         <button class="tab-btn" data-tab="ingredients">🧪 Ingredient Costs</button>
         <button class="tab-btn" data-tab="trials">🔬 Trials</button>
         <button class="tab-btn" data-tab="observations">👁️ Observations</button>
+
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label">Analysis</div>
         <button class="tab-btn" data-tab="analytics">📈 Analytics</button>
-        <button class="tab-btn" data-tab="fieldmap">🗺️ Field Map</button>
         <button class="tab-btn" data-tab="reports">🧾 Reports</button>
+
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label">Tools</div>
+        <button class="tab-btn" data-tab="fieldmap">🗺️ Field Map</button>
         <button class="tab-btn" data-tab="datamanagement">🗂️ Data Management</button>
+
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label">Configuration</div>
         <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
         <button class="tab-btn" data-tab="auditlog">📋 Audit Log</button>
       </div>
@@ -887,11 +1077,21 @@
       </div>
     </aside>
 
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
     <main>
       <header>
-        <div>
-          <h2 id="pageTitle">Dashboard</h2>
-          <div class="breadcrumb" id="breadcrumb">Home</div>
+        <div class="header-left">
+          <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" title="Toggle navigation menu" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div>
+            <h2 id="pageTitle">Dashboard</h2>
+            <div class="breadcrumb" id="breadcrumb">Home</div>
+          </div>
         </div>
       </header>
 
@@ -4647,6 +4847,48 @@
       }
     }
 
+    // ===== TABLE OVERFLOW AUTO-WRAP =====
+    // Wrap all static data-tables that aren't already inside a .table-wrapper
+    function wrapDataTables() {
+      document.querySelectorAll('.data-table').forEach(tbl => {
+        if (tbl.parentElement && !tbl.parentElement.classList.contains('table-wrapper')) {
+          const wrap = document.createElement('div');
+          wrap.className = 'table-wrapper';
+          tbl.parentNode.insertBefore(wrap, tbl);
+          wrap.appendChild(tbl);
+        }
+      });
+    }
+
+    // ===== SIDEBAR TOGGLE (mobile) =====
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const isOpen = sidebar.classList.toggle('open');
+      if (overlay) {
+        overlay.classList.toggle('active', isOpen);
+      }
+    }
+
+    function closeSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    // ===== NAV SEARCH FILTER =====
+    function filterNav(query) {
+      const q = query.toLowerCase().trim();
+      document.querySelectorAll('#navTabs .tab-btn').forEach(btn => {
+        const label = btn.textContent.toLowerCase();
+        btn.style.display = (!q || label.includes(q)) ? '' : 'none';
+      });
+      document.querySelectorAll('#navTabs .nav-section-label, #navTabs .nav-section-divider').forEach(el => {
+        el.style.display = q ? 'none' : '';
+      });
+    }
+
     // ===== UI NAVIGATION =====
     function setActiveTab(tabName) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -8020,6 +8262,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
     // ===== INITIALIZATION =====
     document.addEventListener('DOMContentLoaded', async () => {
       await initOfflineCache();
+      wrapDataTables();
       $('scriptUrl').value = state.scriptUrl;
       localStorage.setItem('agri-script-url', state.scriptUrl || '');
 
@@ -8028,7 +8271,11 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       }
       if ($('settingWeatherApiKey')) $('settingWeatherApiKey').value = state.settings.weatherApiKey || '';
       document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.onclick = () => setActiveTab(btn.dataset.tab);
+        btn.onclick = () => {
+          setActiveTab(btn.dataset.tab);
+          // On mobile, close the sidebar after navigation
+          if (window.innerWidth <= 768) closeSidebar();
+        };
       });
 
       if ($('obsTrial')) {
