@@ -678,6 +678,97 @@
       color: var(--primary);
     }
 
+    .control-row {
+      background: rgba(8, 145, 178, 0.08) !important;
+      border-left: 4px solid var(--accent);
+    }
+
+    .heatmap-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.82rem;
+    }
+
+    .heatmap-table th,
+    .heatmap-table td {
+      border: 1px solid var(--border);
+      padding: 6px;
+      text-align: center;
+    }
+
+    .quality-chip {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .dynamic-fields {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(148, 163, 184, 0.08);
+      margin-top: 10px;
+    }
+
+    .image-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .image-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    #annotationCanvas {
+      width: 100%;
+      max-height: 360px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .compare-wrap {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 260px;
+      background: #e2e8f0;
+      margin-top: 8px;
+    }
+
+    .compare-wrap img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .compare-after {
+      clip-path: inset(0 50% 0 0);
+    }
+
     @media (max-width: 768px) {
       .app { grid-template-columns: 1fr; }
       .sidebar { position: absolute; left: -270px; top: 0; height: 100%; z-index: 1000; width: 270px; transition: left 0.3s; }
@@ -1194,6 +1285,17 @@
                 <input type="number" id="obsDaa" min="0" value="0">
               </div>
               <div class="form-group">
+                <label>Treatment Group *</label>
+                <select id="obsTreatment">
+                  <option value="Control">Control (Untreated)</option>
+                  <option value="T1">T1 (25% dosage)</option>
+                  <option value="T2">T2 (50% dosage)</option>
+                  <option value="T3">T3 (75% dosage)</option>
+                  <option value="T4">T4 (100% dosage)</option>
+                  <option value="T5">T5 (125% dosage)</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label>Pest/Weed Cover (%)</label>
                 <input type="number" id="obsDamage" min="0" max="100" value="0">
               </div>
@@ -1252,6 +1354,8 @@
               <textarea id="obsNotes" placeholder="Temperature, humidity, weather, field conditions..."></textarea>
             </div>
 
+            <div id="obsDynamicFields" class="dynamic-fields" style="display:none;"></div>
+
             <div class="form-grid">
               <button class="btn-primary" id="btnOpenCamera">📷 Capture Photo</button>
               <button class="btn-secondary" id="btnVoiceNote">🎤 Voice Note</button>
@@ -1259,6 +1363,53 @@
             </div>
 
             <button class="btn-primary" id="btnAddObservation" style="width:100%;">Save Observation</button>
+          </div>
+
+          <div class="card">
+            <h3>📷 Advanced Image Workflow</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Batch Upload Images</label>
+                <input type="file" id="obsBatchImages" accept="image/*" multiple>
+              </div>
+              <div class="form-group">
+                <label>Gallery Trial Filter</label>
+                <select id="imageGalleryTrialFilter"><option value="">All Trials</option></select>
+              </div>
+            </div>
+            <div class="export-buttons">
+              <button class="btn-secondary btn-sm" id="btnAnalyzeOverlay">🧮 Pest Overlay Count</button>
+              <button class="btn-secondary btn-sm" id="btnOpenAnnotator">✏️ Annotate Selected</button>
+              <button class="btn-secondary btn-sm" id="btnSetBefore">⬅️ Set Before</button>
+              <button class="btn-secondary btn-sm" id="btnSetAfter">➡️ Set After</button>
+            </div>
+            <div id="imageGallery" class="image-gallery-grid"></div>
+
+            <div style="margin-top:12px;">
+              <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Annotation Canvas</h4>
+              <div class="export-buttons" style="margin:0 0 8px;">
+                <button class="btn-secondary btn-sm" id="annModePen">Pen</button>
+                <button class="btn-secondary btn-sm" id="annModeRect">Rect</button>
+                <button class="btn-secondary btn-sm" id="annModeText">Text</button>
+                <button class="btn-secondary btn-sm" id="annClear">Clear</button>
+                <button class="btn-primary btn-sm" id="annSave">Save Annotation</button>
+              </div>
+              <canvas id="annotationCanvas" width="900" height="480"></canvas>
+            </div>
+
+            <div style="margin-top:12px;">
+              <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Before / After Comparison</h4>
+              <div class="form-grid">
+                <div class="form-group"><label>Before Image</label><select id="beforeImageSelect"><option value="">Select</option></select></div>
+                <div class="form-group"><label>After Image</label><select id="afterImageSelect"><option value="">Select</option></select></div>
+              </div>
+              <input type="range" id="compareSlider" min="0" max="100" value="50" style="width:100%;">
+              <div class="compare-wrap" id="compareWrap">
+                <img id="compareBeforeImg" alt="Before image">
+                <img id="compareAfterImg" class="compare-after" alt="After image">
+              </div>
+              <div id="compareStats" style="margin-top:6px;color:var(--text-light);font-size:0.85rem;"></div>
+            </div>
           </div>
 
           <div class="card">
@@ -1273,7 +1424,7 @@
             <h3>Recent Observations</h3>
             <table class="data-table" id="obsTable">
               <thead>
-                <tr><th>Trial</th><th>Date</th><th>DAA</th><th>Cover %</th><th>Phyto</th><th>Image Type</th><th>Efficacy</th><th>Actions</th></tr>
+                <tr><th>Trial</th><th>Date</th><th>DAA</th><th>Treatment</th><th>Cover %</th><th>Phyto</th><th>Image Type</th><th>Efficacy</th><th>Actions</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -1325,10 +1476,31 @@
             <h3>Treatment Effectiveness Matrix</h3>
             <table class="data-table" id="treatmentTable">
               <thead>
-                <tr><th>Treatment</th><th>N</th><th>Mean(%)</th><th>SD</th><th>CV</th><th>Quality</th></tr>
+                <tr><th>Treatment</th><th>N</th><th>Mean Cover%</th><th>SD</th><th>SE</th><th>Efficacy%</th><th>Rating</th></tr>
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+
+          <div class="card">
+            <h3>Data Quality Report</h3>
+            <div id="dataQualityContent" style="font-size:0.9rem;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Advanced Visualization</h3>
+            <div class="form-grid">
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Day-wise Efficacy Curve</h4>
+                <canvas id="dayWiseChart" style="max-height:260px;"></canvas>
+              </div>
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Dose-Response Curve</h4>
+                <canvas id="doseResponseChart" style="max-height:260px;"></canvas>
+              </div>
+            </div>
+            <h4 style="margin:12px 0 6px;color:var(--text-light);font-size:0.86rem;">Treatment-Day Heatmap</h4>
+            <div id="heatmapContainer"></div>
           </div>
         </section>
 
@@ -1415,6 +1587,45 @@
                 <p>Printable cards for field teams, similar to herbicide app cards.</p>
                 <button class="btn-primary btn-sm" onclick="window.printObservationCards()">Print Cards</button>
               </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Template Report Builder</h3>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Template Type</label>
+                <select id="reportTemplateType">
+                  <option value="academic">Academic Publication</option>
+                  <option value="business">Business Client</option>
+                  <option value="government">Government Compliance</option>
+                  <option value="summary">1-Page Summary</option>
+                  <option value="detailed">Detailed Full Analysis</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Trial Focus</label>
+                <select id="reportTemplateTrial"><option value="">All Trials</option></select>
+              </div>
+              <div class="form-group">
+                <label>Language</label>
+                <select id="reportTemplateLang">
+                  <option value="en">English</option>
+                  <option value="hi">Hindi labels</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid three">
+              <label><input type="checkbox" id="repSecMethod" checked> Include Methodology</label>
+              <label><input type="checkbox" id="repSecStats" checked> Include Statistics</label>
+              <label><input type="checkbox" id="repSecWeather" checked> Include Weather</label>
+              <label><input type="checkbox" id="repSecImages" checked> Include Image Notes</label>
+              <label><input type="checkbox" id="repSecReco" checked> Include Recommendations</label>
+              <label><input type="checkbox" id="repSecRaw"> Include Raw Data Appendix</label>
+            </div>
+            <div class="export-buttons">
+              <button class="btn-primary btn-sm" id="btnGenerateTemplateReport">Generate Template PDF</button>
+              <button class="btn-secondary btn-sm" id="btnGenerateTemplatePreview">Preview Template</button>
             </div>
           </div>
 
@@ -1762,7 +1973,14 @@
       editingObservationId: null,
       auditLog: (function() { try { return JSON.parse(localStorage.getItem('agri-audit-log') || '[]'); } catch(e) { return []; } })(),
       weatherData: null,
-      auditFilter: 'all'
+      weatherForecast: [],
+      auditFilter: 'all',
+      alertHistory: (function() { try { return JSON.parse(localStorage.getItem('agri-alert-history') || '[]'); } catch(e) { return []; } })(),
+      imageLibrary: (function() { try { return JSON.parse(localStorage.getItem('agri-image-library') || '[]'); } catch(e) { return []; } })(),
+      selectedImageId: '',
+      compareBeforeId: '',
+      compareAfterId: '',
+      annotator: { mode: 'pen', drawing: false, startX: 0, startY: 0 }
     };
 
     const $ = id => document.getElementById(id);
@@ -1811,6 +2029,24 @@
 
       return '';
     }
+
+    // ===== APPS SCRIPT CLIENT HELPERS =====
+    // Small helper to POST JSON payloads to your deployed Apps Script web app.
+    // The agent will not modify server-side Apps Script; update the URL in Settings if needed.
+    async function postToSheet(payload, timeoutMs = 15000) {
+      const url = getEffectiveScriptUrl();
+      if (!url) throw new Error('Apps Script URL is not set. Please set it in Settings.');
+      const res = await fetchWithTimeout(url, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }, timeoutMs);
+      const text = await res.text();
+      try { return JSON.parse(text); } catch (e) { return text; }
+    }
+
+    window.postToSheet = postToSheet;
 
     async function fetchWithTimeout(url, opts, timeoutMs = 12000) {
       const controller = new AbortController();
@@ -1898,12 +2134,16 @@
     function renderAllLocal() {
       renderFormulations();
       renderTrials();
+      populateReportTemplateTrials();
+      populateImageTrialFilter();
       renderObservations();
       renderIngredientMaster();
+      renderImageGallery();
+      updateCompareView();
       if ($('dashboard').classList.contains('active')) renderDashboard();
       if ($('fieldmap').classList.contains('active')) renderFieldMap();
       if ($('reports').classList.contains('active')) renderReportPreview();
-      if ($('analytics').classList.contains('active')) { renderStats(); renderTukeyTable(); renderCategoryEfficacy(); }
+      if ($('analytics').classList.contains('active')) { renderStats(); renderTukeyTable(); renderCategoryEfficacy(); renderComparisonChart(); renderAdvancedVisualizations(); }
       if ($('auditlog').classList.contains('active')) renderAuditLog();
       renderDataHealth();
       renderAlertPanel();
@@ -2093,6 +2333,7 @@
       $('obsDate').value = '';
       $('obsReplication').value = '1';
       $('obsDaa').value = '0';
+      $('obsTreatment').value = 'Control';
       $('obsDamage').value = '0';
       $('obsPestCount').value = '0';
       $('obsPhyto').value = '0';
@@ -2102,6 +2343,8 @@
       $('obsImageType').value = '';
       $('obsImageFile').value = '';
       setObservationImage('');
+      const box = $('obsDynamicFields');
+      if (box) { box.style.display = 'none'; box.innerHTML = ''; }
       $('btnAddObservation').textContent = 'Save Observation';
     }
 
@@ -2112,6 +2355,7 @@
       $('obsDate').value = item.date || '';
       $('obsReplication').value = safeParseNum(item.replication) || 1;
       $('obsDaa').value = safeParseNum(item.daa) || 0;
+      $('obsTreatment').value = item.treatment || 'Control';
       $('obsDamage').value = safeParseNum(item.damage) || 0;
       $('obsPestCount').value = safeParseNum(item.pest_count) || 0;
       $('obsPhyto').value = safeParseNum(item.phyto) || 0;
@@ -2120,6 +2364,29 @@
       $('obsNotes').value = item.notes || '';
       $('obsImageType').value = item.image_type || '';
       setObservationImage(item.image_url || '');
+      renderDynamicObservationFields();
+      const dynamic = safeJsonParse(item.dynamic_json, {}) || {};
+      const dynamicMap = {
+        lab_temp: 'obsLabTemp',
+        lab_humidity: 'obsLabHumidity',
+        microscopic_note: 'obsMicroscopic',
+        field_temp: 'obsFieldTemp',
+        field_humidity: 'obsFieldHumidity',
+        soil_moisture: 'obsSoilMoisture',
+        climate_control: 'obsClimateControl',
+        greenhouse_temp: 'obsGreenhouseTemp',
+        pest_stage: 'obsPestStage',
+        observed_mortality: 'obsMortality',
+        lesion_count: 'obsLesionCount',
+        sporulation_score: 'obsSporulation',
+        plant_vigor: 'obsPlantVigor',
+        root_health_note: 'obsRootHealth'
+      };
+      Object.keys(dynamic).forEach(function(k) {
+        const el = document.getElementById(dynamicMap[k] || '');
+        if (!el) return;
+        el.value = dynamic[k] ?? '';
+      });
       $('btnAddObservation').textContent = 'Update Observation';
       setActiveTab('observations');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2129,6 +2396,7 @@
       if (!payload || !payload.trial_id || !payload.date) return 'Trial and Date are required';
       if ((safeParseNum(payload.replication) || 0) < 1) return 'Replication must be at least 1';
       if ((safeParseNum(payload.daa) || 0) < 0) return 'DAA cannot be negative';
+      if (!['Control', 'T1', 'T2', 'T3', 'T4', 'T5'].includes(String(payload.treatment || ''))) return 'Treatment must be Control or T1-T5';
       const damage = safeParseNum(payload.damage);
       if (damage === null || damage < 0 || damage > 100) return 'Cover % must be between 0 and 100';
       const pestCount = safeParseNum(payload.pest_count);
@@ -2147,6 +2415,98 @@
       });
       if (duplicate) return 'Duplicate observation for same Trial + Date + Replication';
       return '';
+    }
+
+    function getObservationWarnings(payload) {
+      const warnings = [];
+      const damage = safeParseNum(payload.damage) || 0;
+      const pest = safeParseNum(payload.pest_count) || 0;
+      const disease = safeParseNum(payload.disease_severity) || 0;
+      const phyto = safeParseNum(payload.phyto) || 0;
+      if (damage > 70 && pest === 0) warnings.push('High cover (>70%) with zero pest count looks suspicious.');
+      if (disease >= 7 && damage < 20) warnings.push('Disease severity is very high while cover is low.');
+      if (phyto >= 8 && damage < 10) warnings.push('Severe phytotoxicity with very low cover may be conflicting.');
+      return warnings;
+    }
+
+    function getSelectedObservationContext() {
+      const trialId = $('obsTrial')?.value;
+      const trial = state.trials.find(function(t) { return String(t.id) === String(trialId); });
+      const formulation = trial ? state.formulations.find(function(f) { return String(f.id) === String(trial.formulation_id); }) : null;
+      return { trial, formulation, trialType: trial?.type || '', formulationType: formulation?.type || '' };
+    }
+
+    function renderDynamicObservationFields() {
+      const box = $('obsDynamicFields');
+      if (!box) return;
+      const ctx = getSelectedObservationContext();
+      if (!ctx.trial) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+
+      const trialBits = [];
+      if (ctx.trialType === 'Lab') {
+        trialBits.push('<div class="form-group"><label>Lab Temperature (deg C)</label><input type="number" id="obsLabTemp" step="0.1" placeholder="25"></div>');
+        trialBits.push('<div class="form-group"><label>Lab Humidity (%)</label><input type="number" id="obsLabHumidity" min="0" max="100" placeholder="70"></div>');
+        trialBits.push('<div class="form-group"><label>Microscopic Observation</label><input type="text" id="obsMicroscopic" placeholder="spore count / mobility"></div>');
+      }
+      if (ctx.trialType === 'Field' || ctx.trialType === 'On-farm' || ctx.trialType === 'Micro-plot') {
+        trialBits.push('<div class="form-group"><label>Field Temp (deg C)</label><input type="number" id="obsFieldTemp" step="0.1" placeholder="28"></div>');
+        trialBits.push('<div class="form-group"><label>Field Humidity (%)</label><input type="number" id="obsFieldHumidity" min="0" max="100" placeholder="65"></div>');
+        trialBits.push('<div class="form-group"><label>Soil Moisture Status</label><select id="obsSoilMoisture"><option value="">Select</option><option value="Dry">Dry</option><option value="Normal">Normal</option><option value="Wet">Wet</option></select></div>');
+      }
+      if (ctx.trialType === 'Greenhouse') {
+        trialBits.push('<div class="form-group"><label>Climate Control Status</label><select id="obsClimateControl"><option value="">Select</option><option value="Cooling ON">Cooling ON</option><option value="Heating ON">Heating ON</option><option value="Ventilation ON">Ventilation ON</option><option value="Stable">Stable</option></select></div>');
+        trialBits.push('<div class="form-group"><label>Greenhouse Temp (deg C)</label><input type="number" id="obsGreenhouseTemp" step="0.1" placeholder="24"></div>');
+      }
+
+      const formBits = [];
+      if (ctx.formulationType === 'Pesticide') {
+        formBits.push('<div class="form-group"><label>Pest Life Stage Observed</label><input type="text" id="obsPestStage" placeholder="egg/larva/nymph/adult"></div>');
+        formBits.push('<div class="form-group"><label>Mortality % (Observed)</label><input type="number" id="obsMortality" min="0" max="100" placeholder="0-100"></div>');
+      }
+      if (ctx.formulationType === 'Fungicide') {
+        formBits.push('<div class="form-group"><label>Lesion Count</label><input type="number" id="obsLesionCount" min="0" placeholder="count"></div>');
+        formBits.push('<div class="form-group"><label>Sporulation Score (0-9)</label><input type="number" id="obsSporulation" min="0" max="9" placeholder="0-9"></div>');
+      }
+      if (ctx.formulationType === 'Biofertilizer') {
+        formBits.push('<div class="form-group"><label>Plant Vigor (0-10)</label><input type="number" id="obsPlantVigor" min="0" max="10" placeholder="0-10"></div>');
+        formBits.push('<div class="form-group"><label>Root Health Note</label><input type="text" id="obsRootHealth" placeholder="white roots / branching"></div>');
+      }
+
+      box.style.display = 'block';
+      box.innerHTML = `
+        <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:6px;">Dynamic fields for ${ctx.trialType} trial + ${ctx.formulationType || 'Unknown'} formulation</div>
+        <div class="form-grid three">${trialBits.join('')}</div>
+        <div class="form-grid three" style="margin-top:8px;">${formBits.join('')}</div>
+      `;
+    }
+
+    function collectDynamicObservationFields() {
+      const read = function(id) {
+        const el = $(id);
+        if (!el) return undefined;
+        if (el.type === 'number') return safeParseNum(el.value);
+        return (el.value || '').trim();
+      };
+      return {
+        lab_temp: read('obsLabTemp'),
+        lab_humidity: read('obsLabHumidity'),
+        microscopic_note: read('obsMicroscopic'),
+        field_temp: read('obsFieldTemp'),
+        field_humidity: read('obsFieldHumidity'),
+        soil_moisture: read('obsSoilMoisture'),
+        climate_control: read('obsClimateControl'),
+        greenhouse_temp: read('obsGreenhouseTemp'),
+        pest_stage: read('obsPestStage'),
+        observed_mortality: read('obsMortality'),
+        lesion_count: read('obsLesionCount'),
+        sporulation_score: read('obsSporulation'),
+        plant_vigor: read('obsPlantVigor'),
+        root_health_note: read('obsRootHealth')
+      };
     }
 
     // ===== AUDIT LOG =====
@@ -2198,7 +2558,50 @@
       renderAuditLog();
     };
 
-    // ===== DUE / LATE ALERT ENGINE =====
+    // ===== ALERT ENGINE =====
+    function persistAlertHistory() {
+      localStorage.setItem('agri-alert-history', JSON.stringify(state.alertHistory || []));
+    }
+
+    function upsertAlertHistoryEntry(entry) {
+      const key = String(entry.key || '');
+      if (!key) return;
+      const existing = (state.alertHistory || []).find(function(x) { return String(x.key) === key; });
+      if (existing) {
+        existing.lastSeen = new Date().toISOString();
+        existing.count = (safeParseNum(existing.count) || 1) + 1;
+      } else {
+        state.alertHistory.unshift({ key: key, firstSeen: new Date().toISOString(), lastSeen: new Date().toISOString(), count: 1, acknowledged: false, snoozeUntil: '' });
+      }
+      if (state.alertHistory.length > 800) state.alertHistory = state.alertHistory.slice(0, 800);
+      persistAlertHistory();
+    }
+
+    function isAlertSnoozed(key) {
+      const rec = (state.alertHistory || []).find(function(x) { return String(x.key) === String(key); });
+      if (!rec || !rec.snoozeUntil) return false;
+      const ts = new Date(rec.snoozeUntil).getTime();
+      return Number.isFinite(ts) && ts > Date.now();
+    }
+
+    window.ackAlert = function(key) {
+      const rec = (state.alertHistory || []).find(function(x) { return String(x.key) === String(key); });
+      if (!rec) return;
+      rec.acknowledged = true;
+      rec.snoozeUntil = '';
+      persistAlertHistory();
+      renderAlertPanel();
+    };
+
+    window.snoozeAlert = function(key, hours) {
+      const rec = (state.alertHistory || []).find(function(x) { return String(x.key) === String(key); });
+      if (!rec) return;
+      rec.acknowledged = false;
+      rec.snoozeUntil = new Date(Date.now() + ((safeParseNum(hours) || 24) * 60 * 60 * 1000)).toISOString();
+      persistAlertHistory();
+      renderAlertPanel();
+    };
+
     function checkDueLateAlerts() {
       const now = Date.now();
       const alerts = [];
@@ -2215,40 +2618,142 @@
           const obsForDay = trialObs.filter(function(o) { return safeParseNum(o.daa) === day; });
           if (dueTs < now && obsForDay.length < reps) {
             const daysLate = Math.floor((now - dueTs) / (24 * 60 * 60 * 1000));
-            alerts.push({ trial: trial.name, trialId: trial.id, day: day, dueDate: dueDate.toLocaleDateString(), daysLate: daysLate, recorded: obsForDay.length, required: reps });
+            alerts.push({ type: 'due', severity: 'high', key: `due:${trial.id}:${day}`, trial: trial.name, trialId: trial.id, day: day, dueDate: dueDate.toLocaleDateString(), daysLate: daysLate, recorded: obsForDay.length, required: reps, message: `${trial.name} Day ${day} is overdue by ${daysLate} day(s)` });
           } else if (dueTs > now && (dueTs - now) < 2 * 24 * 60 * 60 * 1000 && obsForDay.length < reps) {
             const daysUntil = Math.ceil((dueTs - now) / (24 * 60 * 60 * 1000));
-            alerts.push({ trial: trial.name, trialId: trial.id, day: day, dueDate: dueDate.toLocaleDateString(), daysLate: -(daysUntil), recorded: obsForDay.length, required: reps });
+            alerts.push({ type: 'due', severity: 'medium', key: `due:${trial.id}:${day}`, trial: trial.name, trialId: trial.id, day: day, dueDate: dueDate.toLocaleDateString(), daysLate: -(daysUntil), recorded: obsForDay.length, required: reps, message: `${trial.name} Day ${day} is due in ${daysUntil} day(s)` });
           }
         });
       });
       return alerts;
     }
 
+    function checkThresholdAlerts() {
+      const alerts = [];
+      state.observations.slice(-120).forEach(function(o) {
+        const trial = state.trials.find(function(t) { return String(t.id) === String(o.trial_id); });
+        const trialName = trial ? trial.name : 'Trial';
+        const disease = safeParseNum(o.disease_severity) || 0;
+        const phyto = safeParseNum(o.phyto) || 0;
+        const pest = safeParseNum(o.pest_count) || 0;
+        if (disease >= 5) alerts.push({ type: 'threshold', severity: 'medium', key: `disease:${o.id}`, message: `${trialName}: disease severity ${disease} on ${o.date}` });
+        if (phyto >= 6) alerts.push({ type: 'threshold', severity: 'high', key: `phyto:${o.id}`, message: `${trialName}: phytotoxicity ${phyto} (consider stop treatment)` });
+        if (pest > 50) alerts.push({ type: 'threshold', severity: 'medium', key: `pest:${o.id}`, message: `${trialName}: pest count ${pest} exceeds threshold` });
+      });
+      return alerts;
+    }
+
+    function checkDataQualityAlerts() {
+      const alerts = [];
+      const report = computeDataQualityReport();
+      if (report.label !== 'No Data') {
+        if ((safeParseNum(report.score) || 0) < 60) alerts.push({ type: 'quality', severity: 'high', key: 'quality:score', message: `Data quality score is ${report.score}/100 (${report.label})` });
+        if ((safeParseNum(report.outlierCount) || 0) > 0) alerts.push({ type: 'quality', severity: 'medium', key: 'quality:outliers', message: `Outliers detected: ${report.outlierCount}` });
+      }
+      const stats = computeAggregateStats();
+      if ((safeParseNum(stats.cv) || 0) > 30) alerts.push({ type: 'quality', severity: 'high', key: 'quality:cv', message: `CV is high (${stats.cv}%). Consider more consistent replications.` });
+      return alerts;
+    }
+
+    function checkWeatherAlerts() {
+      const alerts = [];
+      if (state.weatherData && state.weatherData.main) {
+        const temp = state.weatherData.main.temp;
+        const wind = (state.weatherData.wind?.speed || 0) * 3.6;
+        const humidity = state.weatherData.main.humidity;
+        const rain = state.weatherData.rain ? (state.weatherData.rain['1h'] || state.weatherData.rain['3h'] || 0) : 0;
+        const score = weatherSuitabilityScore(temp, humidity, wind, rain > 0);
+        if (score >= 90) alerts.push({ type: 'weather', severity: 'low', key: 'weather:ideal', message: `Ideal spray window now (score ${score}/100)` });
+        if (wind > 15) alerts.push({ type: 'weather', severity: 'high', key: 'weather:wind', message: `High wind ${wind.toFixed(1)} km/h. Drift risk.` });
+        if (rain > 0) alerts.push({ type: 'weather', severity: 'high', key: 'weather:rain', message: `Rain detected (${rain.toFixed(1)} mm). Spray wash-off risk.` });
+        if (temp > 35 || temp < 12) alerts.push({ type: 'weather', severity: 'medium', key: 'weather:temp', message: `Temperature stress (${temp}°C).` });
+      }
+      return alerts;
+    }
+
+    function checkTrialPhaseAlerts() {
+      const alerts = [];
+      state.trials.forEach(function(t) {
+        const progress = getObservationProgress(t);
+        const expected = Math.max(1, progress.expected || 1);
+        const ratio = (progress.recorded || 0) / expected;
+        if ((progress.recorded || 0) === 0) alerts.push({ type: 'phase', severity: 'low', key: `phase:start:${t.id}`, message: `${t.name}: trial started, record first observations.` });
+        if (ratio >= 0.45 && ratio < 0.55) alerts.push({ type: 'phase', severity: 'low', key: `phase:half:${t.id}`, message: `${t.name}: trial is around halfway complete.` });
+        if (ratio >= 0.8 && ratio < 1) alerts.push({ type: 'phase', severity: 'medium', key: `phase:near:${t.id}`, message: `${t.name}: nearing completion (${progress.recorded}/${expected}).` });
+        if (progress.label === 'Complete') alerts.push({ type: 'phase', severity: 'low', key: `phase:complete:${t.id}`, message: `${t.name}: complete and ready for report.` });
+      });
+      return alerts;
+    }
+
+    function getAllActiveAlerts() {
+      const combined = []
+        .concat(checkDueLateAlerts())
+        .concat(checkThresholdAlerts())
+        .concat(checkDataQualityAlerts())
+        .concat(checkWeatherAlerts())
+        .concat(checkTrialPhaseAlerts());
+      return combined.filter(function(a) {
+        upsertAlertHistoryEntry(a);
+        const rec = (state.alertHistory || []).find(function(x) { return String(x.key) === String(a.key); });
+        if (rec && rec.acknowledged) return false;
+        return !isAlertSnoozed(a.key);
+      });
+    }
+
     function renderAlertPanel() {
       const el = $('alertPanel');
       const badge = $('alertBadge');
       if (!el) return;
-      const alerts = checkDueLateAlerts();
+      const alerts = getAllActiveAlerts();
+      const recentHistory = (state.alertHistory || []).slice(0, 5);
+      const historyHtml = recentHistory.length ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.25);font-size:0.8rem;color:var(--text-light);">
+        <strong>Recent alert history</strong><br>
+        ${recentHistory.map(function(h) {
+          const status = h.acknowledged ? 'Acknowledged' : (h.snoozeUntil ? ('Snoozed until ' + new Date(h.snoozeUntil).toLocaleString()) : 'Active');
+          return `<div style="margin-top:4px;">${String(h.key).replace(/^[^:]+:/, '')} · ${status}</div>`;
+        }).join('')}
+      </div>` : '';
       if (badge) { badge.textContent = String(alerts.length); badge.style.display = alerts.length > 0 ? 'inline-block' : 'none'; }
       if (!alerts.length) {
-        el.innerHTML = '<p style="color:var(--success);font-size:0.9rem;">✅ All observations are on schedule</p>';
+        el.innerHTML = '<p style="color:var(--success);font-size:0.9rem;">✅ All observations are on schedule</p>' + historyHtml;
         return;
       }
       el.innerHTML = alerts.map(function(a) {
-        const isLate = a.daysLate > 0;
+        const isDueAlert = a.type === 'due';
+        const isLate = isDueAlert && a.daysLate > 0;
+        const sevClass = a.severity === 'high' ? 'badge-danger' : (a.severity === 'medium' ? 'badge-warning' : 'badge-success');
+        const sevLabel = a.severity === 'high' ? 'High' : (a.severity === 'medium' ? 'Medium' : 'Low');
         return `<div class="alert-item">
-          <span>${isLate ? '🔴' : '🟡'} <strong>${a.trial}</strong> — Day ${a.day}
-          <small style="color:var(--text-light);"> (${a.recorded}/${a.required} reps, due ${a.dueDate})</small></span>
-          <span class="badge ${isLate ? 'badge-danger' : 'badge-warning'}">${isLate ? a.daysLate + 'd late' : 'Due in ' + Math.abs(a.daysLate) + 'd'}</span>
+          <span>${a.severity === 'high' ? '🔴' : (a.severity === 'medium' ? '🟠' : '🟢')} ${a.message || ''}
+          ${isDueAlert ? `<small style="color:var(--text-light);"> (${a.recorded}/${a.required} reps, due ${a.dueDate})</small>` : ''}</span>
+          <span>
+            <span class="badge ${sevClass}">${sevLabel}</span>
+            <button class="btn-secondary btn-tiny" onclick="window.snoozeAlert('${a.key}',24)">Snooze</button>
+            <button class="btn-secondary btn-tiny" onclick="window.ackAlert('${a.key}')">Ack</button>
+          </span>
         </div>`;
-      }).join('');
+      }).join('') + historyHtml;
     }
 
     // ===== CATEGORY-SPECIFIC EFFICACY CALCULATORS =====
-    function abbottEfficacy(treatmentVal, controlVal) {
-      if (controlVal === null || controlVal <= 0) return null;
-      return Math.max(0, Math.min(100, (1 - treatmentVal / controlVal) * 100));
+    function abbottEfficacy(treatmentMortality, controlMortality) {
+      if (controlMortality === null || controlMortality >= 100) return null;
+      const corrected = ((treatmentMortality - controlMortality) / (100 - controlMortality)) * 100;
+      return Math.max(0, Math.min(100, corrected));
+    }
+
+    function efficacyLetter(eff) {
+      const val = safeParseNum(eff) || 0;
+      if (val >= 90) return 'A';
+      if (val >= 75) return 'B';
+      if (val >= 50) return 'C';
+      if (val >= 25) return 'D';
+      return 'F';
+    }
+
+    function getTreatmentDosePercent(treatment) {
+      const map = { Control: 0, T1: 25, T2: 50, T3: 75, T4: 100, T5: 125 };
+      return map[String(treatment || 'Control')] ?? 0;
     }
 
     function diseaseSeverityIndex(obs) {
@@ -2274,7 +2779,9 @@
 
         if (type === 'Pesticide' && meanControlDamage !== null) {
           formula = "Abbott's Formula";
-          efficacyVal = abbottEfficacy(meanDamage, meanControlDamage);
+          const treatmentMortality = 100 - meanDamage;
+          const controlMortality = 100 - meanControlDamage;
+          efficacyVal = abbottEfficacy(treatmentMortality, controlMortality);
         } else if (type === 'Fungicide') {
           formula = 'Disease Severity Index (DSI)';
           const meanDSI = trialObs.reduce(function(s, o) { return s + parseFloat(diseaseSeverityIndex(o)); }, 0) / trialObs.length;
@@ -2438,12 +2945,19 @@
       if (el) el.innerHTML = '<p style="text-align:center;color:var(--text-light);">⏳ Fetching weather data...</p>';
 
       try {
-        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&appid=${encodeURIComponent(apiKey)}&units=metric`;
-        const res = await fetchWithTimeout(url, { method: 'GET' }, 15000);
-        if (!res.ok) { const t = await res.text(); throw new Error('API ' + res.status + ': ' + t.substring(0, 120)); }
-        const data = await res.json();
+        const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&appid=${encodeURIComponent(apiKey)}&units=metric`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&appid=${encodeURIComponent(apiKey)}&units=metric`;
+        const [resCurrent, resForecast] = await Promise.all([
+          fetchWithTimeout(currentUrl, { method: 'GET' }, 15000),
+          fetchWithTimeout(forecastUrl, { method: 'GET' }, 15000)
+        ]);
+        if (!resCurrent.ok) { const t = await resCurrent.text(); throw new Error('Current API ' + resCurrent.status + ': ' + t.substring(0, 120)); }
+        if (!resForecast.ok) { const t = await resForecast.text(); throw new Error('Forecast API ' + resForecast.status + ': ' + t.substring(0, 120)); }
+        const data = await resCurrent.json();
+        const forecast = await resForecast.json();
         state.weatherData = data;
-        const summary = renderWeatherResult(data);
+        state.weatherForecast = Array.isArray(forecast.list) ? forecast.list : [];
+        const summary = renderWeatherResult(data, state.weatherForecast);
         // Also update the summary banner in observations tab
         const summaryEl = $('weatherSummary');
         if (summaryEl && summary) summaryEl.innerHTML = summary;
@@ -2453,39 +2967,83 @@
       }
     };
 
-    function renderWeatherResult(data) {
+    function weatherSuitabilityScore(temp, humidity, windSpeedKmH, rainExpected) {
+      let score = 0;
+      if (temp >= 18 && temp <= 25) score += 30;
+      else if (temp >= 15 && temp <= 28) score += 15;
+
+      if (humidity >= 60 && humidity <= 85) score += 25;
+      else if (humidity >= 50 && humidity <= 95) score += 12;
+
+      if (windSpeedKmH < 10) score += 25;
+      else if (windSpeedKmH <= 15) score += 12;
+
+      if (!rainExpected) score += 20;
+      return score;
+    }
+
+    function estimateLeafWetnessHours(temp, humidity, rainMm) {
+      let hours = 0;
+      if (humidity >= 90) hours += 8;
+      else if (humidity >= 80) hours += 5;
+      else if (humidity >= 70) hours += 3;
+      if (rainMm > 0) hours += 2;
+      if (temp < 12 || temp > 34) hours -= 1;
+      return Math.max(0, Math.min(12, hours));
+    }
+
+    function renderWeatherResult(data, forecastList) {
       if (!data || !data.main) return '';
       const temp = data.main.temp;
       const windSpeed = (data.wind?.speed || 0) * 3.6; // m/s → km/h
       const humidity = data.main.humidity;
       const rainMM = data.rain ? (data.rain['1h'] || data.rain['3h'] || 0) : 0;
       const desc = data.weather?.[0]?.description || '';
+      const forecast = Array.isArray(forecastList) ? forecastList : [];
+
+      const next6hRain = forecast.slice(0, 2).some(function(x) {
+        return !!((x.rain && ((x.rain['3h'] || 0) > 0)) || /rain|storm/i.test(String(x.weather?.[0]?.description || '')));
+      });
+      const score = weatherSuitabilityScore(temp, humidity, windSpeed, next6hRain || rainMM > 0);
+      const status = score >= 90 ? 'IDEAL CONDITIONS' : (score >= 60 ? 'ACCEPTABLE' : 'NOT RECOMMENDED');
+      const sprayClass = score >= 90 ? 'spray-go' : (score >= 60 ? 'spray-caution' : 'spray-nogo');
 
       const issues = [];
-      if (windSpeed > 15) issues.push(`Wind ${windSpeed.toFixed(1)} km/h exceeds 15 km/h limit`);
-      if (temp < 15) issues.push(`Temperature ${temp}°C below 15°C minimum`);
-      if (temp > 35) issues.push(`Temperature ${temp}°C above 35°C maximum`);
-      if (rainMM > 0) issues.push(`Rain ${rainMM.toFixed(1)} mm detected`);
-      if (humidity > 90) issues.push(`Humidity ${humidity}% very high (>90%)`);
+      if (windSpeed > 15) issues.push(`High drift risk: wind ${windSpeed.toFixed(1)} km/h`);
+      if (temp < 15 || temp > 28) issues.push(`Temperature outside preferred 15-28°C range (${temp}°C)`);
+      if (humidity < 50 || humidity > 95) issues.push(`Humidity outside workable range: ${humidity}%`);
+      if (next6hRain || rainMM > 0) issues.push('Rain expected in next 6 hours, wash-off risk.');
 
-      const sprayOk = issues.length === 0;
-      const sprayClass = sprayOk ? 'spray-go' : (issues.length <= 1 ? 'spray-caution' : 'spray-nogo');
-      const sprayMsg = sprayOk ? '✅ GO — Conditions favourable for spraying' : (issues.length <= 1 ? '⚠️ CAUTION — Check conditions' : '🚫 NO-GO — Do not spray now');
+      const leafWetnessHours = estimateLeafWetnessHours(temp, humidity, rainMM);
+      const windows = forecast
+        .slice(0, 20)
+        .map(function(item) {
+          const t = item.main?.temp;
+          const h = item.main?.humidity;
+          const w = (item.wind?.speed || 0) * 3.6;
+          const r = item.rain?.['3h'] || 0;
+          const s = weatherSuitabilityScore(t, h, w, r > 0);
+          return { time: item.dt_txt, score: s, temp: t, humidity: h, wind: w };
+        })
+        .filter(function(w) { return w.score >= 60; })
+        .slice(0, 4);
 
-      const html = `<div class="${sprayClass}" style="margin-bottom:12px;">${sprayMsg}</div>
+      const html = `<div class="${sprayClass}" style="margin-bottom:12px;">${status} · Spray Score ${score}/100</div>
         <div class="weather-grid">
           <div class="weather-cell">🌡️ <strong>Temp:</strong> ${temp}°C</div>
           <div class="weather-cell">💨 <strong>Wind:</strong> ${windSpeed.toFixed(1)} km/h</div>
           <div class="weather-cell">💧 <strong>Humidity:</strong> ${humidity}%</div>
           <div class="weather-cell">🌧️ <strong>Rain:</strong> ${rainMM.toFixed(1)} mm</div>
           <div class="weather-cell" style="grid-column:span 2;">📍 <strong>${data.name || 'Location'}</strong> — ${desc}</div>
+          <div class="weather-cell" style="grid-column:span 2;">🍃 <strong>Estimated Leaf Wetness:</strong> ${leafWetnessHours.toFixed(1)} h</div>
         </div>
         ${issues.length ? `<ul style="color:var(--danger);font-size:0.85rem;padding-left:16px;margin:6px 0 0;">${issues.map(function(iss) { return '<li>' + iss + '</li>'; }).join('')}</ul>` : ''}
+        ${windows.length ? `<div style="margin-top:8px;font-size:0.84rem;"><strong>Next best spray windows:</strong><br>${windows.map(function(w){ return `${new Date(w.time).toLocaleString()} (Score ${w.score}, ${w.temp}°C, ${w.humidity}% RH, ${w.wind.toFixed(1)} km/h)`; }).join('<br>')}</div>` : '<div style="margin-top:8px;font-size:0.84rem;color:var(--text-light);">No acceptable spray windows in near forecast.</div>'}
         <small style="color:var(--text-light);">Updated ${new Date().toLocaleTimeString()} · OpenWeatherMap</small>`;
 
       const el = $('weatherResult');
       if (el) el.innerHTML = html;
-      return `<strong>${sprayMsg}</strong> · ${temp}°C · Wind ${windSpeed.toFixed(1)} km/h · ${desc}`;
+      return `<strong>${status}</strong> (Score ${score}/100) · ${temp}°C · Wind ${windSpeed.toFixed(1)} km/h · ${desc}`;
     }
 
     // ===== AI DETECTION MVP =====
@@ -3074,16 +3632,20 @@
     }
 
     function computeANOVA() {
-      const trialsData = {};
+      const groupsByTreatment = {};
       state.observations.forEach(obs => {
-        if (!trialsData[obs.trial_id]) trialsData[obs.trial_id] = [];
-        trialsData[obs.trial_id].push(obs);
+        const treatment = String(obs.treatment || 'Control');
+        if (!groupsByTreatment[treatment]) groupsByTreatment[treatment] = [];
+        const val = safeParseNum(obs.damage);
+        if (val !== null) groupsByTreatment[treatment].push(val);
       });
 
-      const groups = Object.values(trialsData);
+      const groups = Object.entries(groupsByTreatment)
+        .map(function(entry) { return { name: entry[0], values: entry[1] }; })
+        .filter(function(g) { return g.values.length >= 2; });
       if (groups.length < 2) return null;
 
-      const allValues = groups.map(g => g.map(o => safeParseNum(o.damage)).filter(v => v !== null)).flat().filter(v => v !== null);
+      const allValues = groups.map(g => g.values).flat();
       const grandMean = allValues.reduce((a,b) => a+b) / allValues.length;
       
       let ssBetween = 0;
@@ -3092,7 +3654,7 @@
       let dfWithin = allValues.length - groups.length;
 
       groups.forEach(group => {
-        const vals = group.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+        const vals = group.values;
         if (vals.length) {
           const mean = vals.reduce((a,b) => a+b) / vals.length;
           ssBetween += vals.length * Math.pow(mean - grandMean, 2);
@@ -3103,17 +3665,21 @@
       const msBetween = ssBetween / dfBetween;
       const msWithin = ssWithin / dfWithin;
       const fValue = msWithin === 0 ? 0 : msBetween / msWithin;
-      
-      // Approximate p-value (simplified)
-      const pValue = fValue > 5 ? '< 0.05 (Significant)' : '> 0.05 (Not significant)';
+      const approxP = Math.exp(-0.5 * fValue * Math.max(1, dfBetween));
+      const pValue = Number.isFinite(approxP) ? Math.max(0, Math.min(1, approxP)) : 1;
 
       return {
+        groups: groups.length,
+        totalN: allValues.length,
+        ssBetween: ssBetween.toFixed(3),
+        ssWithin: ssWithin.toFixed(3),
         fValue: fValue.toFixed(3),
         dfBetween,
         dfWithin,
         msBetween: msBetween.toFixed(3),
         msWithin: msWithin.toFixed(3),
-        pValue
+        pValue: pValue.toFixed(4),
+        significant: pValue < 0.05
       };
     }
 
@@ -3129,6 +3695,102 @@
       const pooledSd = Math.sqrt((var1 + var2) / 2);
       const cohen = pooledSd === 0 ? 0 : (mean1 - mean2) / pooledSd;
       return Math.abs(cohen).toFixed(3);
+    }
+
+    function detectOutliersIQR(values) {
+      const arr = (values || []).filter(v => Number.isFinite(v)).slice().sort((a, b) => a - b);
+      if (arr.length < 4) return { q1: null, q3: null, iqr: 0, lower: null, upper: null, outliers: [] };
+      const q = function(p) {
+        const idx = (arr.length - 1) * p;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        if (lo === hi) return arr[lo];
+        return arr[lo] + (arr[hi] - arr[lo]) * (idx - lo);
+      };
+      const q1 = q(0.25);
+      const q3 = q(0.75);
+      const iqr = q3 - q1;
+      const lower = q1 - 1.5 * iqr;
+      const upper = q3 + 1.5 * iqr;
+      return { q1, q3, iqr, lower, upper, outliers: arr.filter(v => v < lower || v > upper) };
+    }
+
+    function computeDataQualityReport() {
+      const total = state.observations.length;
+      if (!total) return { score: 0, label: 'No Data', completenessPct: 0, rangePct: 0, outlierPct: 0, consistencyPct: 0, issues: [] };
+
+      let completeCount = 0;
+      let rangeValidCount = 0;
+      let consistencyHits = 0;
+      const issues = [];
+      const damageVals = [];
+
+      state.observations.forEach(function(obs) {
+        const requiredOk = !!(obs.trial_id && obs.date && obs.treatment !== undefined && obs.damage !== undefined && obs.phyto !== undefined && obs.disease_severity !== undefined);
+        if (requiredOk) completeCount++;
+        const tempPayload = {
+          trial_id: obs.trial_id,
+          date: obs.date,
+          replication: safeParseNum(obs.replication) || 1,
+          daa: safeParseNum(obs.daa) || 0,
+          treatment: obs.treatment || 'Control',
+          damage: safeParseNum(obs.damage),
+          pest_count: safeParseNum(obs.pest_count),
+          phyto: safeParseNum(obs.phyto),
+          disease_severity: safeParseNum(obs.disease_severity)
+        };
+        const rangeError = validateObservationPayload(tempPayload, obs.id);
+        if (!rangeError || rangeError.startsWith('Duplicate')) rangeValidCount++;
+        const warns = getObservationWarnings(tempPayload);
+        if (!warns.length) consistencyHits++;
+        if (warns.length) issues.push((obs.date || '-') + ' / ' + (obs.treatment || 'Control') + ': ' + warns.join(' '));
+        const d = safeParseNum(obs.damage);
+        if (d !== null) damageVals.push(d);
+      });
+
+      const outlierReport = detectOutliersIQR(damageVals);
+      const completenessPct = (completeCount / total) * 100;
+      const rangePct = (rangeValidCount / total) * 100;
+      const outlierPct = total ? ((total - outlierReport.outliers.length) / total) * 100 : 0;
+      const consistencyPct = (consistencyHits / total) * 100;
+      const score = (0.3 * completenessPct) + (0.3 * rangePct) + (0.2 * outlierPct) + (0.2 * consistencyPct);
+      const label = score >= 90 ? 'Excellent' : (score >= 75 ? 'Good' : (score >= 60 ? 'Fair' : 'Poor'));
+      return {
+        score: score.toFixed(1),
+        label,
+        completenessPct: completenessPct.toFixed(1),
+        rangePct: rangePct.toFixed(1),
+        outlierPct: outlierPct.toFixed(1),
+        consistencyPct: consistencyPct.toFixed(1),
+        outlierCount: outlierReport.outliers.length,
+        iqr: outlierReport,
+        issues: issues.slice(0, 6)
+      };
+    }
+
+    function renderDataQualityReport() {
+      const el = $('dataQualityContent');
+      if (!el) return;
+      const report = computeDataQualityReport();
+      if (report.label === 'No Data') {
+        el.innerHTML = '<p style="color:var(--text-light);">No observations available for data quality scoring.</p>';
+        return;
+      }
+      const chipColor = report.score >= 90 ? 'rgba(16,185,129,0.2);color:#15803d;' : (report.score >= 75 ? 'rgba(59,130,246,0.2);color:#1d4ed8;' : (report.score >= 60 ? 'rgba(249,115,22,0.2);color:#c2410c;' : 'rgba(220,38,38,0.2);color:#b91c1c;'));
+      el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          <div><strong>Quality Score:</strong> ${report.score}/100</div>
+          <span class="quality-chip" style="${chipColor}">${report.label}</span>
+        </div>
+        <div class="form-grid" style="margin-bottom:8px;">
+          <div>Completeness: <strong>${report.completenessPct}%</strong></div>
+          <div>Range Validity: <strong>${report.rangePct}%</strong></div>
+          <div>Outlier-Free: <strong>${report.outlierPct}%</strong> (Outliers: ${report.outlierCount})</div>
+          <div>Logical Consistency: <strong>${report.consistencyPct}%</strong></div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:6px;">IQR bounds on cover%: ${report.iqr.lower !== null ? report.iqr.lower.toFixed(2) : '-'} to ${report.iqr.upper !== null ? report.iqr.upper.toFixed(2) : '-'}.</div>
+        ${report.issues.length ? `<ul style="margin:6px 0 0;padding-left:18px;color:var(--danger);font-size:0.85rem;">${report.issues.map(function(x){ return '<li>' + x + '</li>'; }).join('')}</ul>` : '<div style="color:var(--success);font-size:0.86rem;">No major logical inconsistencies detected.</div>'}
+      `;
     }
 
     // ===== API & SYNC =====
@@ -3255,6 +3917,8 @@
         renderStats();
         renderTukeyTable();
         renderCategoryEfficacy();
+        renderComparisonChart();
+        renderAdvancedVisualizations();
       }
       if (tabName === 'auditlog') {
         renderAuditLog();
@@ -3380,6 +4044,9 @@
         dossierSel.value = prev2;
       }
 
+      populateReportTemplateTrials();
+      populateImageTrialFilter();
+
       // Update trial formulation select dropdown
       const sel = $('trialFormulation');
       if (sel) {
@@ -3433,6 +4100,7 @@
             <td>${trial?.name || 'N/A'}</td>
             <td>${new Date(o.date).toLocaleDateString()}</td>
             <td>${o.daa || 0}</td>
+            <td><span class="badge badge-info">${o.treatment || 'Control'}</span></td>
             <td>${o.damage}%</td>
             <td><span class="severity-label low">${o.phyto}</span></td>
             <td>${imageType || '-'}</td>
@@ -3443,7 +4111,7 @@
             </td>
           </tr>
         `;
-      }).join('') || '<tr><td colspan="8" style="text-align:center;color:#999;">No observations yet</td></tr>';
+      }).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;">No observations yet</td></tr>';
     }
 
     function renderObservationCalendar() {
@@ -3513,50 +4181,270 @@
             <tbody>
               <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 8px;"><strong>Between Groups</strong></td>
-                <td style="padding: 8px; text-align: center;">-</td>
+                <td style="padding: 8px; text-align: center;">${anova.ssBetween}</td>
                 <td style="padding: 8px; text-align: center;">${anova.dfBetween}</td>
                 <td style="padding: 8px; text-align: center;">${anova.msBetween}</td>
                 <td style="padding: 8px; text-align: center;"><strong>${anova.fValue}</strong></td>
-                <td style="padding: 8px; text-align: center;">${anova.pValue}</td>
+                <td style="padding: 8px; text-align: center;">${anova.pValue} (${anova.significant ? 'Significant' : 'Not significant'})</td>
               </tr>
               <tr>
                 <td style="padding: 8px;"><strong>Within Groups</strong></td>
-                <td style="padding: 8px; text-align: center;">-</td>
+                <td style="padding: 8px; text-align: center;">${anova.ssWithin}</td>
                 <td style="padding: 8px; text-align: center;">${anova.dfWithin}</td>
                 <td style="padding: 8px; text-align: center;">${anova.msWithin}</td>
                 <td colspan="2" style="padding: 8px; text-align: center;"><em>Error term</em></td>
               </tr>
             </tbody>
           </table>
+          <p style="margin-top:8px;color:var(--text-light);font-size:0.84rem;">Groups: ${anova.groups}, Total N: ${anova.totalN}. ANOVA evaluates treatment groups by cover%.</p>
         `;
       }
 
       renderTreatmentTable();
+      renderDataQualityReport();
     }
 
     function renderTreatmentTable() {
-      const trialsData = {};
+      const byTreatment = {};
       state.observations.forEach(obs => {
-        if (!trialsData[obs.trial_id]) trialsData[obs.trial_id] = [];
-        trialsData[obs.trial_id].push(obs);
+        const treatment = String(obs.treatment || 'Control');
+        if (!byTreatment[treatment]) byTreatment[treatment] = [];
+        byTreatment[treatment].push(obs);
       });
 
       const tbody = $('treatmentTable').querySelector('tbody');
-      tbody.innerHTML = Object.entries(trialsData).map(([trialId, observations]) => {
-        const trial = state.trials.find(t => t.id === trialId);
-        const stats = computeGroupStats(observations);
-        const quality = interpretCV(parseFloat(stats.cv));
+      const controlRows = byTreatment.Control || [];
+      const controlDamageMean = controlRows.length
+        ? (controlRows.reduce((s, o) => s + (safeParseNum(o.damage) || 0), 0) / controlRows.length)
+        : null;
+      const controlMortality = controlDamageMean === null ? null : 100 - controlDamageMean;
+      const warningHtml = controlMortality !== null && controlMortality >= 15
+        ? `<tr><td colspan="7" style="color:var(--danger);font-weight:600;">⚠ Control mortality is ${controlMortality.toFixed(1)}% (>=15%). Trial quality may be questionable.</td></tr>`
+        : '';
+
+      const rows = Object.entries(byTreatment).map(([treatment, observations]) => {
+        const vals = observations.map(o => safeParseNum(o.damage)).filter(v => v !== null);
+        const n = vals.length;
+        if (!n) return '';
+        const mean = vals.reduce((a, b) => a + b, 0) / n;
+        const variance = vals.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / Math.max(1, n - 1);
+        const sd = Math.sqrt(variance);
+        const se = sd / Math.sqrt(n);
+        const treatmentMortality = 100 - mean;
+        const efficacy = treatment === 'Control'
+          ? 0
+          : (controlMortality === null ? (100 - mean) : abbottEfficacy(treatmentMortality, controlMortality));
+        const grade = efficacyLetter(efficacy);
+        const rowClass = treatment === 'Control' ? 'control-row' : '';
         return `
-          <tr>
-            <td><strong>${trial?.name || 'Trial ' + trialId}</strong></td>
-            <td style="text-align: center;">${stats.n}</td>
-            <td style="text-align: center;">${stats.mean}%</td>
-            <td style="text-align: center;">${stats.sd}</td>
-            <td style="text-align: center;">${stats.cv}%</td>
-            <td><span class="badge badge-info">${quality}</span></td>
+          <tr class="${rowClass}">
+            <td><strong>${treatment}</strong></td>
+            <td style="text-align: center;">${n}</td>
+            <td style="text-align: center;">${mean.toFixed(2)}%</td>
+            <td style="text-align: center;">${sd.toFixed(2)}</td>
+            <td style="text-align: center;">${se.toFixed(2)}</td>
+            <td style="text-align: center;">${(safeParseNum(efficacy) || 0).toFixed(1)}%</td>
+            <td style="text-align: center;"><span class="rating-badge rating-${grade.toLowerCase()}">${grade}</span></td>
           </tr>
         `;
       }).join('');
+
+      tbody.innerHTML = warningHtml + (rows || '<tr><td colspan="7" style="text-align:center;color:#999;">No treatment observations yet</td></tr>');
+    }
+
+    function renderComparisonChart() {
+      const ctx = $('comparisonChart');
+      if (!ctx || !window.Chart) return;
+      const byTreatment = {};
+      state.observations.forEach(function(obs) {
+        const t = String(obs.treatment || 'Control');
+        if (!byTreatment[t]) byTreatment[t] = [];
+        byTreatment[t].push(safeParseNum(obs.damage));
+      });
+      const labels = Object.keys(byTreatment);
+      const efficacy = labels.map(function(t) {
+        const vals = byTreatment[t].filter(v => v !== null);
+        if (!vals.length) return 0;
+        const meanDamage = vals.reduce((a, b) => a + b, 0) / vals.length;
+        return 100 - meanDamage;
+      });
+      if (state.charts.comparison) state.charts.comparison.destroy();
+      state.charts.comparison = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Mean Efficacy %',
+            data: efficacy,
+            backgroundColor: efficacy.map(function(v) {
+              const g = efficacyLetter(v);
+              if (g === 'A') return 'rgba(34,197,94,0.6)';
+              if (g === 'B') return 'rgba(59,130,246,0.6)';
+              if (g === 'C') return 'rgba(249,115,22,0.6)';
+              if (g === 'D') return 'rgba(239,68,68,0.6)';
+              return 'rgba(127,29,29,0.7)';
+            }),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      });
+    }
+
+    function renderAdvancedVisualizations() {
+      renderDayWiseChart();
+      renderDoseResponseChart();
+      renderHeatmap();
+    }
+
+    function renderDayWiseChart() {
+      const ctx = $('dayWiseChart');
+      if (!ctx || !window.Chart) return;
+      const grouped = {};
+      state.observations.forEach(function(o) {
+        const t = String(o.treatment || 'Control');
+        const d = safeParseNum(o.daa);
+        const v = safeParseNum(o.damage);
+        if (d === null || v === null) return;
+        if (!grouped[t]) grouped[t] = {};
+        if (!grouped[t][d]) grouped[t][d] = [];
+        grouped[t][d].push(100 - v);
+      });
+      const days = Array.from(new Set(state.observations.map(o => safeParseNum(o.daa)).filter(v => v !== null))).sort((a, b) => a - b);
+      const treatments = Object.keys(grouped);
+      const palette = ['#059669', '#3b82f6', '#f97316', '#ef4444', '#8b5cf6', '#0f766e'];
+      const datasets = treatments.map(function(t, idx) {
+        return {
+          label: t,
+          data: days.map(function(d) {
+            const vals = grouped[t][d] || [];
+            if (!vals.length) return null;
+            return vals.reduce((a, b) => a + b, 0) / vals.length;
+          }),
+          borderColor: palette[idx % palette.length],
+          backgroundColor: palette[idx % palette.length] + '33',
+          tension: 0.35,
+          spanGaps: true
+        };
+      });
+      if (state.charts.dayWise) state.charts.dayWise.destroy();
+      state.charts.dayWise = new Chart(ctx, {
+        type: 'line',
+        data: { labels: days.map(d => 'Day ' + d), datasets },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } } } }
+      });
+    }
+
+    function renderDoseResponseChart() {
+      const ctx = $('doseResponseChart');
+      if (!ctx || !window.Chart) return;
+      const byTreatment = {};
+      state.observations.forEach(function(o) {
+        const t = String(o.treatment || 'Control');
+        const v = safeParseNum(o.damage);
+        if (v === null) return;
+        if (!byTreatment[t]) byTreatment[t] = [];
+        byTreatment[t].push(100 - v);
+      });
+      const points = Object.keys(byTreatment)
+        .map(function(t) {
+          const vals = byTreatment[t];
+          const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+          return { treatment: t, x: getTreatmentDosePercent(t), y: mean };
+        })
+        .sort((a, b) => a.x - b.x);
+
+      const lc50 = (function() {
+        for (let i = 1; i < points.length; i++) {
+          const p1 = points[i - 1];
+          const p2 = points[i];
+          if ((p1.y <= 50 && p2.y >= 50) || (p1.y >= 50 && p2.y <= 50)) {
+            const ratio = (50 - p1.y) / (p2.y - p1.y || 1);
+            return p1.x + ratio * (p2.x - p1.x);
+          }
+        }
+        return null;
+      })();
+
+      if (state.charts.dose) state.charts.dose.destroy();
+      state.charts.dose = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Dose-Response',
+            data: points,
+            parsing: false,
+            borderColor: '#0891b2',
+            backgroundColor: 'rgba(8,145,178,0.2)',
+            tension: 0.35,
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { type: 'linear', min: 0, max: 130, title: { display: true, text: 'Dosage %' } },
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.raw.treatment + ': ' + ctx.raw.y.toFixed(1) + '%';
+                },
+                afterLabel: function() {
+                  return lc50 !== null ? 'Approx LC50: ' + lc50.toFixed(1) + '% dose' : 'LC50 not crossed in current data';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderHeatmap() {
+      const el = $('heatmapContainer');
+      if (!el) return;
+      const treatments = Array.from(new Set(state.observations.map(o => String(o.treatment || 'Control'))));
+      const days = Array.from(new Set(state.observations.map(o => safeParseNum(o.daa)).filter(v => v !== null))).sort((a, b) => a - b);
+      if (!treatments.length || !days.length) {
+        el.innerHTML = '<p style="color:var(--text-light);">Need treatment observations with DAA to render heatmap.</p>';
+        return;
+      }
+      const agg = {};
+      state.observations.forEach(function(o) {
+        const t = String(o.treatment || 'Control');
+        const d = safeParseNum(o.daa);
+        const eff = 100 - (safeParseNum(o.damage) || 0);
+        const key = t + '|' + d;
+        if (!agg[key]) agg[key] = [];
+        agg[key].push(eff);
+      });
+      const cellColor = function(v) {
+        const x = Math.max(0, Math.min(100, v));
+        const g = Math.round((x / 100) * 180 + 30);
+        const r = Math.round(((100 - x) / 100) * 180 + 30);
+        return 'rgb(' + r + ',' + g + ',80)';
+      };
+      el.innerHTML = `
+        <table class="heatmap-table">
+          <thead><tr><th>Treatment</th>${days.map(function(d){ return '<th>Day ' + d + '</th>'; }).join('')}</tr></thead>
+          <tbody>
+            ${treatments.map(function(t) {
+              return `<tr><th>${t}</th>${days.map(function(d) {
+                const vals = agg[t + '|' + d] || [];
+                const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+                return `<td style="background:${mean === null ? '#f8fafc' : cellColor(mean)};color:${mean !== null && mean > 65 ? '#fff' : '#111827'};">${mean === null ? '-' : mean.toFixed(1)}</td>`;
+              }).join('')}</tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
     function renderEfficacyChart() {
@@ -4163,6 +5051,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         const meanDamage = damages.length ? (damages.reduce((a,b) => a+b, 0) / damages.length) : 0;
         const efficacy = (100 - meanDamage).toFixed(1);
         return {
+          trialId: trial.id,
           trial: trial.name || '-',
           type: trial.type || '-',
           location: trial.location || '-',
@@ -4281,6 +5170,441 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       window.print();
     };
 
+    function populateReportTemplateTrials() {
+      const sel = $('reportTemplateTrial');
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">All Trials</option>' + state.trials.map(function(t) {
+        return `<option value="${t.id}">${t.name}</option>`;
+      }).join('');
+      sel.value = prev || '';
+    }
+
+    function getTemplateReportInputs() {
+      return {
+        type: $('reportTemplateType')?.value || 'academic',
+        trialId: $('reportTemplateTrial')?.value || '',
+        lang: $('reportTemplateLang')?.value || 'en',
+        includeMethod: !!$('repSecMethod')?.checked,
+        includeStats: !!$('repSecStats')?.checked,
+        includeWeather: !!$('repSecWeather')?.checked,
+        includeImages: !!$('repSecImages')?.checked,
+        includeReco: !!$('repSecReco')?.checked,
+        includeRaw: !!$('repSecRaw')?.checked
+      };
+    }
+
+    function buildTemplateReportModel() {
+      const input = getTemplateReportInputs();
+      const rows = buildReportRows().filter(function(r) { return !input.trialId || String(r.trialId || '') === String(input.trialId); });
+      const focusTrial = input.trialId ? state.trials.find(function(t) { return String(t.id) === String(input.trialId); }) : null;
+      const focusObs = input.trialId ? state.observations.filter(function(o) { return String(o.trial_id) === String(input.trialId); }) : state.observations;
+      const stats = computeAggregateStats();
+      const anova = computeANOVA();
+      const dq = computeDataQualityReport();
+      const best = rows.slice().sort(function(a, b) { return (safeParseNum(b.efficacy) || 0) - (safeParseNum(a.efficacy) || 0); })[0] || null;
+      const templateTheme = {
+        academic: { title: 'Academic Publication Format', subtitle: 'Structured for publication-style reporting' },
+        business: { title: 'Business Client Format', subtitle: 'Decision-oriented summary for commercial stakeholders' },
+        government: { title: 'Government Compliance Format', subtitle: 'Traceable summary for audit and regulatory review' },
+        summary: { title: '1-Page Summary Format', subtitle: 'Condensed single-page executive overview' },
+        detailed: { title: 'Detailed Full Analysis', subtitle: 'Expanded report with methods, evidence, and appendix' }
+      };
+      return { input, rows, focusTrial, focusObs, stats, anova, dq, best, theme: templateTheme[input.type] || templateTheme.academic };
+    }
+
+    function buildTemplatePreviewHtml(model) {
+      const titleColor = model.input.type === 'government' ? '#1d4ed8' : (model.input.type === 'business' ? '#7c2d12' : '#047857');
+      const weatherSummary = state.weatherData && state.weatherData.main
+        ? `Temp ${state.weatherData.main.temp}°C, RH ${state.weatherData.main.humidity}%, Wind ${(((state.weatherData.wind?.speed || 0) * 3.6)).toFixed(1)} km/h`
+        : 'No weather snapshot available';
+      const rawRows = model.input.includeRaw
+        ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Raw Data Appendix</h4>
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+              <thead><tr style="background:#e2e8f0;"><th style="padding:4px;border:1px solid #cbd5e1;">Date</th><th style="padding:4px;border:1px solid #cbd5e1;">Trial</th><th style="padding:4px;border:1px solid #cbd5e1;">Treatment</th><th style="padding:4px;border:1px solid #cbd5e1;">DAA</th><th style="padding:4px;border:1px solid #cbd5e1;">Damage%</th></tr></thead>
+              <tbody>${model.focusObs.slice(0, 30).map(function(o) {
+                const trial = state.trials.find(function(t) { return String(t.id) === String(o.trial_id); });
+                return `<tr><td style="padding:4px;border:1px solid #e2e8f0;">${o.date || '-'}</td><td style="padding:4px;border:1px solid #e2e8f0;">${trial?.name || '-'}</td><td style="padding:4px;border:1px solid #e2e8f0;">${o.treatment || 'Control'}</td><td style="padding:4px;border:1px solid #e2e8f0;">${o.daa || 0}</td><td style="padding:4px;border:1px solid #e2e8f0;">${o.damage || 0}</td></tr>`;
+              }).join('') || '<tr><td colspan="5" style="padding:6px;text-align:center;border:1px solid #e2e8f0;">No observations</td></tr>'}</tbody>
+            </table>`
+        : '';
+      return `
+        <div style="border-bottom:3px solid ${titleColor};padding-bottom:8px;margin-bottom:10px;">
+          <h2 style="margin:0;color:${titleColor};">${model.theme.title}</h2>
+          <p style="margin:4px 0 0;color:#64748b;">${model.theme.subtitle}</p>
+          <p style="margin:4px 0 0;color:#64748b;">Generated ${new Date().toLocaleString()}${model.focusTrial ? ' · Focus Trial: ' + model.focusTrial.name : ''}</p>
+        </div>
+        <h4 style="margin:0 0 6px;color:${titleColor};">Executive Summary</h4>
+        <p style="margin:0 0 10px;">Trials: <strong>${model.rows.length}</strong> | Observations: <strong>${model.focusObs.length}</strong> | Avg Efficacy: <strong>${model.stats.avgEfficacy}%</strong> | Data Quality: <strong>${model.dq.label}</strong></p>
+        ${model.input.includeMethod ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Methodology</h4><p style="margin:0 0 10px;">${model.focusTrial ? `${model.focusTrial.type} trial at ${model.focusTrial.location || 'unlisted location'} with ${model.focusTrial.replications || 0} replications and schedule ${model.focusTrial.obs_schedule || '-'}.` : 'Multi-trial summary across the current workspace data.'}</p>` : ''}
+        ${model.input.includeStats ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Statistical Summary</h4><p style="margin:0 0 10px;">ANOVA F=${model.anova ? model.anova.fValue : 'N/A'}, p=${model.anova ? model.anova.pValue : 'N/A'}${model.anova ? (model.anova.significant ? ' (significant)' : ' (not significant)') : ''}. Outliers: ${model.dq.outlierCount || 0}. CV=${model.stats.cv}%.</p>` : ''}
+        ${model.input.includeWeather ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Weather</h4><p style="margin:0 0 10px;">${weatherSummary}</p>` : ''}
+        ${model.input.includeImages ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Image Workflow Summary</h4><p style="margin:0 0 10px;">Image records: ${(state.imageLibrary || []).length}. Recent annotated images: ${(state.imageLibrary || []).filter(function(x){ return !!x.annotatedUrl; }).length}. Latest overlay counts are shown in gallery cards where available.</p>` : ''}
+        <h4 style="margin:12px 0 6px;color:${titleColor};">Trial Table</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#e2e8f0;"><th style="padding:6px;border:1px solid #cbd5e1;">Trial</th><th style="padding:6px;border:1px solid #cbd5e1;">Type</th><th style="padding:6px;border:1px solid #cbd5e1;">Location</th><th style="padding:6px;border:1px solid #cbd5e1;">Obs</th><th style="padding:6px;border:1px solid #cbd5e1;">Efficacy</th></tr></thead>
+          <tbody>${model.rows.map(function(r) { return `<tr><td style="padding:6px;border:1px solid #e2e8f0;">${r.trial}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.type}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.location}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.obsCount}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.efficacy}%</td></tr>`; }).join('') || '<tr><td colspan="5" style="padding:8px;text-align:center;border:1px solid #e2e8f0;">No trial data</td></tr>'}</tbody>
+        </table>
+        ${model.input.includeReco ? `<h4 style="margin:12px 0 6px;color:${titleColor};">Recommendations</h4><p style="margin:0 0 10px;">${model.best ? `Best current performance is ${model.best.trial} at ${model.best.efficacy}% efficacy. Continue observation on lower-performing treatments and review any high-CV or outlier-prone data before final publication.` : 'No sufficient data for recommendation.'}</p>` : ''}
+        ${rawRows}
+      `;
+    }
+
+    window.generateTemplatePreview = function() {
+      const model = buildTemplateReportModel();
+      $('reportPrintArea').innerHTML = buildTemplatePreviewHtml(model);
+      setActiveTab('reports');
+      showToast('Template preview updated', 'success');
+    };
+
+    window.generateTemplateReport = function() {
+      if (!window.jspdf) { showToast('jsPDF not loaded', 'error'); return; }
+      const model = buildTemplateReportModel();
+      const type = model.input.type;
+      const includeWeather = model.input.includeWeather;
+      const includeStats = model.input.includeStats;
+      const includeImages = model.input.includeImages;
+      const includeMethod = model.input.includeMethod;
+      const includeReco = model.input.includeReco;
+      const includeRaw = model.input.includeRaw;
+
+      const i18n = {
+        en: { title: 'Trial Report', summary: 'Executive Summary', methodology: 'Methodology', results: 'Results', discussion: 'Discussion', recommendations: 'Recommendations' },
+        hi: { title: 'परीक्षण रिपोर्ट', summary: 'कार्यकारी सारांश', methodology: 'कार्यविधि', results: 'परिणाम', discussion: 'चर्चा', recommendations: 'सिफारिशें' },
+        ta: { title: 'சோதனை அறிக்கை', summary: 'சுருக்கம்', methodology: 'முறை', results: 'முடிவுகள்', discussion: 'விவாதம்', recommendations: 'பரிந்துரைகள்' }
+      };
+      const T = i18n[model.input.lang] || i18n.en;
+
+      const rows = model.rows;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const now = new Date();
+      const titleSuffix = type === 'business' ? ' - Business Format' : (type === 'government' ? ' - Regulatory Format' : (type === 'summary' ? ' - 1 Page Summary' : (type === 'detailed' ? ' - Detailed' : ' - Academic')));
+
+      doc.setFillColor(5, 150, 105);
+      doc.rect(0, 0, 210, 36, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.text(T.title + titleSuffix, 14, 20);
+      doc.setFontSize(9);
+      doc.text((state.settings.orgName || 'Miklens Crop Protection') + ' | ' + now.toLocaleString(), 14, 29);
+      doc.setTextColor(30, 41, 59);
+
+      let y = 46;
+      doc.setFontSize(12);
+      doc.text(T.summary, 14, y);
+      y += 6;
+      const stats = computeAggregateStats();
+      doc.setFontSize(9);
+      doc.text(`Trials: ${state.trials.length} | Observations: ${state.observations.length} | Avg Efficacy: ${stats.avgEfficacy}% | CV: ${stats.cv}%`, 14, y);
+      y += 8;
+
+      doc.autoTable({
+        startY: y,
+        head: [['Trial', 'Type', 'Location', 'Replications', 'Observations', 'Efficacy %']],
+        body: rows.map(function(r) { return [r.trial, r.type, r.location, String(r.reps), String(r.obsCount), r.efficacy]; }),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [5, 150, 105] }
+      });
+      y = (doc.lastAutoTable?.finalY || y) + 8;
+
+      if (includeMethod) {
+        doc.setFontSize(11); doc.text(T.methodology, 14, y); y += 6;
+        doc.setFontSize(9);
+        const line = model.focusTrial
+          ? `${model.focusTrial.type} trial at ${model.focusTrial.location || 'unlisted location'} with ${model.focusTrial.replications || 0} replications; schedule ${model.focusTrial.obs_schedule || '-'}.`
+          : 'Multi-trial summary across the current workspace data.';
+        doc.text(line, 14, y, { maxWidth: 180 });
+        y += 10;
+      }
+
+      if (includeStats) {
+        doc.setFontSize(11); doc.text(T.results, 14, y); y += 6;
+        const anova = model.anova;
+        const dq = model.dq;
+        const lines = [
+          `ANOVA: F=${anova ? anova.fValue : 'N/A'}, p=${anova ? anova.pValue : 'N/A'}${anova ? (anova.significant ? ' (Significant)' : ' (Not significant)') : ''}`,
+          `Data Quality: ${dq.label} (${dq.score}/100), Outliers: ${dq.outlierCount || 0}`,
+          `Top Concern: ${(dq.issues && dq.issues[0]) ? dq.issues[0] : 'None major'}`
+        ];
+        doc.setFontSize(9);
+        lines.forEach(function(line) { doc.text(line, 14, y); y += 5; });
+        y += 2;
+      }
+
+      if (includeWeather) {
+        doc.setFontSize(11); doc.text(T.methodology, 14, y); y += 6;
+        if (state.weatherData && state.weatherData.main) {
+          const temp = state.weatherData.main.temp;
+          const hum = state.weatherData.main.humidity;
+          const wind = (state.weatherData.wind?.speed || 0) * 3.6;
+          const rain = state.weatherData.rain ? (state.weatherData.rain['1h'] || state.weatherData.rain['3h'] || 0) : 0;
+          const score = weatherSuitabilityScore(temp, hum, wind, rain > 0);
+          doc.setFontSize(9);
+          doc.text(`Weather Snapshot: Temp ${temp}°C, RH ${hum}%, Wind ${wind.toFixed(1)} km/h, Rain ${rain.toFixed(1)} mm`, 14, y); y += 5;
+          doc.text(`Spray Suitability Score: ${score}/100`, 14, y); y += 6;
+        } else {
+          doc.setFontSize(9);
+          doc.text('No weather snapshot captured in current session.', 14, y); y += 6;
+        }
+      }
+
+      if (includeImages) {
+        doc.setFontSize(11); doc.text(T.discussion, 14, y); y += 6;
+        const recent = state.imageLibrary.slice(0, 6);
+        doc.setFontSize(9);
+        doc.text(`Image Notes Included: ${recent.length} recent image records`, 14, y); y += 5;
+        recent.forEach(function(img, idx) {
+          doc.text(`${idx + 1}. ${img.trialName || 'Trial'} | ${(img.type || '').replace(/_/g, ' ') || '-'} | ${new Date(img.createdAt || Date.now()).toLocaleString()}`, 14, y);
+          y += 4;
+        });
+      }
+
+      if (includeReco) {
+        y = Math.min(y + 8, 270);
+        doc.setFontSize(11); doc.text(T.recommendations, 14, y); y += 6;
+        doc.setFontSize(9);
+        doc.text(model.best ? `Best current performance: ${model.best.trial} (${model.best.efficacy}%).` : 'No sufficient data for recommendation.', 14, y, { maxWidth: 180 });
+        y += 8;
+      }
+
+      if (includeRaw) {
+        if (y > 220) { doc.addPage(); y = 18; }
+        const rawObs = model.focusObs.slice(0, 40);
+        doc.setFontSize(11); doc.text('Raw Data Appendix', 14, y); y += 4;
+        doc.autoTable({
+          startY: y,
+          head: [['Date', 'Trial', 'Treatment', 'DAA', 'Damage %']],
+          body: rawObs.map(function(o) {
+            const trial = state.trials.find(function(t) { return String(t.id) === String(o.trial_id); });
+            return [o.date || '-', trial?.name || '-', o.treatment || 'Control', String(o.daa || 0), String(o.damage || 0)];
+          }),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [71, 85, 105] }
+        });
+      }
+
+      doc.save(`template-${type}-${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('Template report generated', 'success');
+    };
+
+    function persistImageLibrary() {
+      localStorage.setItem('agri-image-library', JSON.stringify(state.imageLibrary || []));
+    }
+
+    function addImageToLibrary(imageUrl, sourceType) {
+      if (!imageUrl) return;
+      const trialId = $('obsTrial')?.value || '';
+      const trial = state.trials.find(function(t) { return String(t.id) === String(trialId); });
+      const rec = {
+        id: 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        trialId: trialId || '',
+        trialName: trial ? trial.name : '-',
+        observationDate: $('obsDate')?.value || '',
+        type: $('obsImageType')?.value || sourceType || '',
+        imageUrl: imageUrl,
+        annotatedUrl: '',
+        createdAt: new Date().toISOString()
+      };
+      state.imageLibrary.unshift(rec);
+      if (state.imageLibrary.length > 500) state.imageLibrary = state.imageLibrary.slice(0, 500);
+      persistImageLibrary();
+      renderImageGallery();
+    }
+
+    function getGalleryFilteredImages() {
+      const trialFilter = $('imageGalleryTrialFilter')?.value || '';
+      return (state.imageLibrary || []).filter(function(img) {
+        return !trialFilter || String(img.trialId) === String(trialFilter);
+      });
+    }
+
+    function populateImageTrialFilter() {
+      const sel = $('imageGalleryTrialFilter');
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">All Trials</option>' + state.trials.map(function(t) { return `<option value="${t.id}">${t.name}</option>`; }).join('');
+      sel.value = prev || '';
+    }
+
+    function populateCompareSelectors() {
+      const list = getGalleryFilteredImages();
+      const beforeSel = $('beforeImageSelect');
+      const afterSel = $('afterImageSelect');
+      if (!beforeSel || !afterSel) return;
+      const options = '<option value="">Select</option>' + list.map(function(img) {
+        return `<option value="${img.id}">${img.trialName || '-'} | ${(img.type || '-').replace(/_/g, ' ')} | ${new Date(img.createdAt).toLocaleDateString()}</option>`;
+      }).join('');
+      beforeSel.innerHTML = options;
+      afterSel.innerHTML = options;
+      if (state.compareBeforeId) beforeSel.value = state.compareBeforeId;
+      if (state.compareAfterId) afterSel.value = state.compareAfterId;
+    }
+
+    function renderImageGallery() {
+      const box = $('imageGallery');
+      if (!box) return;
+      const list = getGalleryFilteredImages();
+      box.innerHTML = list.map(function(img) {
+        const active = String(state.selectedImageId) === String(img.id);
+        const src = img.annotatedUrl || img.imageUrl;
+        return `<div class="image-card" style="${active ? 'border-color:var(--primary);box-shadow:0 0 0 2px rgba(5,150,105,0.2);' : ''}">
+          <img src="${src}" alt="gallery image">
+          <div style="font-size:0.74rem;color:var(--text-light);margin-bottom:4px;">${img.trialName || '-'} · ${(img.type || '-').replace(/_/g, ' ')}</div>
+          <div style="font-size:0.72rem;color:var(--text-light);margin-bottom:4px;">${img.overlayCount !== undefined ? ('Overlay count: ' + img.overlayCount) : 'Overlay count: -'}${img.annotatedUrl ? ' · Annotated' : ''}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn-secondary btn-tiny" onclick="window.selectGalleryImage('${img.id}')">Select</button>
+            <button class="btn-secondary btn-tiny" onclick="window.deleteGalleryImage('${img.id}')">Delete</button>
+          </div>
+        </div>`;
+      }).join('') || '<p style="color:var(--text-light);font-size:0.85rem;">No images in gallery yet.</p>';
+      populateCompareSelectors();
+    }
+
+    window.selectGalleryImage = function(id) {
+      state.selectedImageId = id;
+      renderImageGallery();
+      loadSelectedImageToAnnotationCanvas();
+    };
+
+    window.deleteGalleryImage = function(id) {
+      state.imageLibrary = state.imageLibrary.filter(function(x) { return String(x.id) !== String(id); });
+      if (String(state.selectedImageId) === String(id)) state.selectedImageId = '';
+      if (String(state.compareBeforeId) === String(id)) state.compareBeforeId = '';
+      if (String(state.compareAfterId) === String(id)) state.compareAfterId = '';
+      persistImageLibrary();
+      renderImageGallery();
+      updateCompareView();
+    };
+
+    function getImageById(id) {
+      return (state.imageLibrary || []).find(function(x) { return String(x.id) === String(id); }) || null;
+    }
+
+    function updateCompareView() {
+      const before = getImageById(state.compareBeforeId || $('beforeImageSelect')?.value || '');
+      const after = getImageById(state.compareAfterId || $('afterImageSelect')?.value || '');
+      const beforeImg = $('compareBeforeImg');
+      const afterImg = $('compareAfterImg');
+      if (beforeImg) beforeImg.src = before ? (before.annotatedUrl || before.imageUrl) : '';
+      if (afterImg) afterImg.src = after ? (after.annotatedUrl || after.imageUrl) : '';
+      const slider = safeParseNum($('compareSlider')?.value) || 50;
+      if (afterImg) afterImg.style.clipPath = `inset(0 ${100 - slider}% 0 0)`;
+      computeCompareStats(before ? (before.annotatedUrl || before.imageUrl) : '', after ? (after.annotatedUrl || after.imageUrl) : '');
+    }
+
+    function computeCompareStats(beforeUrl, afterUrl) {
+      const out = $('compareStats');
+      if (!out) return;
+      if (!beforeUrl || !afterUrl) {
+        out.textContent = 'Select both before and after images to compute change.';
+        return;
+      }
+      const imgA = new Image();
+      const imgB = new Image();
+      imgA.onload = function() {
+        imgB.onload = function() {
+          const c = document.createElement('canvas');
+          c.width = 120; c.height = 120;
+          const cx = c.getContext('2d');
+          cx.drawImage(imgA, 0, 0, 120, 120);
+          const a = cx.getImageData(0, 0, 120, 120).data;
+          cx.clearRect(0, 0, 120, 120);
+          cx.drawImage(imgB, 0, 0, 120, 120);
+          const b = cx.getImageData(0, 0, 120, 120).data;
+          let diff = 0;
+          for (let i = 0; i < a.length; i += 4) {
+            const da = (a[i] + a[i + 1] + a[i + 2]) / 3;
+            const db = (b[i] + b[i + 1] + b[i + 2]) / 3;
+            diff += Math.abs(da - db);
+          }
+          const norm = diff / ((a.length / 4) * 255);
+          const pct = Math.min(100, Math.max(0, norm * 100));
+          out.textContent = `Estimated visual change: ${pct.toFixed(1)}%`;
+        };
+        imgB.src = afterUrl;
+      };
+      imgA.src = beforeUrl;
+    }
+
+    function getAnnotationCanvasCtx() {
+      const canvas = $('annotationCanvas');
+      if (!canvas) return null;
+      return canvas.getContext('2d');
+    }
+
+    function loadSelectedImageToAnnotationCanvas() {
+      const imgRec = getImageById(state.selectedImageId);
+      const canvas = $('annotationCanvas');
+      if (!canvas) return;
+      const ctx = getAnnotationCanvasCtx();
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!imgRec) return;
+      const img = new Image();
+      img.onload = function() {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
+      };
+      img.src = imgRec.annotatedUrl || imgRec.imageUrl;
+    }
+
+    function estimatePestOverlay(imageUrl) {
+      return new Promise(function(resolve) {
+        const img = new Image();
+        img.onload = function() {
+          const c = document.createElement('canvas');
+          c.width = 180; c.height = 180;
+          const cx = c.getContext('2d');
+          cx.drawImage(img, 0, 0, c.width, c.height);
+          const data = cx.getImageData(0, 0, c.width, c.height).data;
+          const w = c.width;
+          const h = c.height;
+          const mask = new Uint8Array(w * h);
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const i = (y * w + x) * 4;
+              const g = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              mask[y * w + x] = g < 90 ? 1 : 0;
+            }
+          }
+          const seen = new Uint8Array(w * h);
+          const comps = [];
+          const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const idx = y * w + x;
+              if (!mask[idx] || seen[idx]) continue;
+              const q = [[x, y]];
+              seen[idx] = 1;
+              let count = 0, sx = 0, sy = 0;
+              while (q.length) {
+                const p = q.pop();
+                count++; sx += p[0]; sy += p[1];
+                for (let d = 0; d < dirs.length; d++) {
+                  const nx = p[0] + dirs[d][0], ny = p[1] + dirs[d][1];
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                  const ni = ny * w + nx;
+                  if (!mask[ni] || seen[ni]) continue;
+                  seen[ni] = 1;
+                  q.push([nx, ny]);
+                }
+              }
+              if (count >= 4 && count <= 260) comps.push({ x: sx / count, y: sy / count, count: count });
+            }
+          }
+          resolve({ count: comps.length, comps: comps, width: w, height: h });
+        };
+        img.src = imageUrl;
+      });
+    }
+
     function setObservationImage(dataUrl) {
       const value = dataUrl || '';
       $('obsImage').value = value;
@@ -4299,6 +5623,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       const reader = new FileReader();
       reader.onload = function () {
         setObservationImage(String(reader.result || ''));
+        addImageToLibrary(String(reader.result || ''), 'upload_single');
         showToast('Image selected for observation', 'success');
       };
       reader.onerror = function () {
@@ -4314,6 +5639,216 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       showToast('Observation image cleared', 'info');
     };
 
+    if ($('obsBatchImages')) {
+      $('obsBatchImages').addEventListener('change', async function(e) {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        for (const file of files) {
+          await new Promise(function(resolve) {
+            const r = new FileReader();
+            r.onload = function() {
+              addImageToLibrary(String(r.result || ''), 'batch_upload');
+              resolve();
+            };
+            r.onerror = function() { resolve(); };
+            r.readAsDataURL(file);
+          });
+        }
+        showToast(files.length + ' images added to gallery', 'success');
+        e.target.value = '';
+      });
+    }
+
+    if ($('imageGalleryTrialFilter')) {
+      $('imageGalleryTrialFilter').addEventListener('change', function() {
+        renderImageGallery();
+        updateCompareView();
+      });
+    }
+
+    if ($('beforeImageSelect')) {
+      $('beforeImageSelect').addEventListener('change', function(e) {
+        state.compareBeforeId = e.target.value || '';
+        updateCompareView();
+      });
+    }
+    if ($('afterImageSelect')) {
+      $('afterImageSelect').addEventListener('change', function(e) {
+        state.compareAfterId = e.target.value || '';
+        updateCompareView();
+      });
+    }
+    if ($('compareSlider')) {
+      $('compareSlider').addEventListener('input', updateCompareView);
+    }
+
+    if ($('btnSetBefore')) {
+      $('btnSetBefore').onclick = function() {
+        if (!state.selectedImageId) { showToast('Select a gallery image first', 'warning'); return; }
+        state.compareBeforeId = state.selectedImageId;
+        if ($('beforeImageSelect')) $('beforeImageSelect').value = state.compareBeforeId;
+        updateCompareView();
+      };
+    }
+    if ($('btnSetAfter')) {
+      $('btnSetAfter').onclick = function() {
+        if (!state.selectedImageId) { showToast('Select a gallery image first', 'warning'); return; }
+        state.compareAfterId = state.selectedImageId;
+        if ($('afterImageSelect')) $('afterImageSelect').value = state.compareAfterId;
+        updateCompareView();
+      };
+    }
+
+    if ($('btnOpenAnnotator')) {
+      $('btnOpenAnnotator').onclick = function() {
+        if (!state.selectedImageId) { showToast('Select a gallery image first', 'warning'); return; }
+        loadSelectedImageToAnnotationCanvas();
+      };
+    }
+
+    if ($('annModePen')) $('annModePen').onclick = function() { state.annotator.mode = 'pen'; };
+    if ($('annModeRect')) $('annModeRect').onclick = function() { state.annotator.mode = 'rect'; };
+    if ($('annModeText')) $('annModeText').onclick = function() { state.annotator.mode = 'text'; };
+
+    if ($('annClear')) {
+      $('annClear').onclick = function() {
+        loadSelectedImageToAnnotationCanvas();
+      };
+    }
+
+    if ($('annSave')) {
+      $('annSave').onclick = function() {
+        const canvas = $('annotationCanvas');
+        if (!canvas || !state.selectedImageId) { showToast('No selected image to annotate', 'warning'); return; }
+        const rec = getImageById(state.selectedImageId);
+        if (!rec) return;
+        rec.annotatedUrl = canvas.toDataURL('image/png');
+        persistImageLibrary();
+        renderImageGallery();
+        updateCompareView();
+        showToast('Annotation saved', 'success');
+      };
+    }
+
+    if ($('btnAnalyzeOverlay')) {
+      $('btnAnalyzeOverlay').onclick = async function() {
+        if (!state.selectedImageId) { showToast('Select a gallery image first', 'warning'); return; }
+        const rec = getImageById(state.selectedImageId);
+        if (!rec) return;
+        const source = rec.annotatedUrl || rec.imageUrl;
+        const result = await estimatePestOverlay(source);
+        rec.overlayCount = result.count;
+        rec.overlayUpdatedAt = new Date().toISOString();
+        persistImageLibrary();
+        const canvas = $('annotationCanvas');
+        const ctx = getAnnotationCanvasCtx();
+        if (!canvas || !ctx) return;
+        loadSelectedImageToAnnotationCanvas();
+        setTimeout(function() {
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2;
+          const scaleX = canvas.width / result.width;
+          const scaleY = canvas.height / result.height;
+          result.comps.slice(0, 120).forEach(function(c) {
+            ctx.beginPath();
+            ctx.arc(c.x * scaleX, c.y * scaleY, Math.max(4, Math.sqrt(c.count)), 0, Math.PI * 2);
+            ctx.stroke();
+          });
+          if ($('obsPestCount') && (!$('obsPestCount').value || $('obsPestCount').value === '0')) {
+            $('obsPestCount').value = String(result.count);
+          }
+          if ($('obsNotes')) {
+            const note = `Overlay estimate: ${result.count} pest-like objects`;
+            if (!String($('obsNotes').value || '').includes(note)) {
+              $('obsNotes').value = (($('obsNotes').value || '') + ' ' + note).trim();
+            }
+          }
+          renderImageGallery();
+          showToast('Estimated pest objects: ' + result.count, 'info');
+        }, 80);
+      };
+    }
+
+    if ($('annotationCanvas')) {
+      const canvas = $('annotationCanvas');
+      const getPoint = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
+        const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * (canvas.height / rect.height);
+        return { x: x, y: y };
+      };
+      const down = function(e) {
+        if (!state.selectedImageId) return;
+        const p = getPoint(e);
+        state.annotator.drawing = true;
+        state.annotator.startX = p.x;
+        state.annotator.startY = p.y;
+        if (state.annotator.mode === 'text') {
+          const text = prompt('Annotation text');
+          if (text) {
+            const ctx = getAnnotationCanvasCtx();
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '16px Segoe UI';
+            ctx.fillText(text, p.x, p.y);
+          }
+          state.annotator.drawing = false;
+        }
+        e.preventDefault();
+      };
+      const move = function(e) {
+        if (!state.annotator.drawing || state.annotator.mode !== 'pen') return;
+        const p = getPoint(e);
+        const ctx = getAnnotationCanvasCtx();
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(state.annotator.startX, state.annotator.startY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        state.annotator.startX = p.x;
+        state.annotator.startY = p.y;
+        e.preventDefault();
+      };
+      const up = function(e) {
+        if (!state.annotator.drawing) return;
+        const p = getPoint(e.changedTouches ? e.changedTouches[0] : e);
+        if (state.annotator.mode === 'rect') {
+          const ctx = getAnnotationCanvasCtx();
+          ctx.strokeStyle = '#ea580c';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(state.annotator.startX, state.annotator.startY, p.x - state.annotator.startX, p.y - state.annotator.startY);
+        }
+        state.annotator.drawing = false;
+        e.preventDefault();
+      };
+      canvas.addEventListener('mousedown', down);
+      canvas.addEventListener('mousemove', move);
+      canvas.addEventListener('mouseup', up);
+      canvas.addEventListener('mouseleave', up);
+      canvas.addEventListener('touchstart', down, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      canvas.addEventListener('touchend', up, { passive: false });
+    }
+
+    if ($('btnVoiceNote')) {
+      $('btnVoiceNote').onclick = function() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { showToast('Voice input not supported in this browser', 'warning'); return; }
+        const rec = new SR();
+        rec.lang = 'en-IN';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        showToast('Listening...', 'info');
+        rec.onresult = function(ev) {
+          const text = ev.results?.[0]?.[0]?.transcript || '';
+          $('obsNotes').value = (($('obsNotes').value || '') + ' ' + text).trim();
+          showToast('Voice note added', 'success');
+        };
+        rec.onerror = function() { showToast('Voice note failed', 'error'); };
+        rec.start();
+      };
+    }
+
     $('btnAddObservation').onclick = async () => {
       const trialId = $('obsTrial').value;
       const date = $('obsDate').value;
@@ -4328,6 +5863,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         date: date,
         daa: safeParseNum($('obsDaa').value) || 0,
         replication: safeParseNum($('obsReplication').value) || 1,
+        treatment: $('obsTreatment').value || 'Control',
         damage: safeParseNum($('obsDamage').value) || 0,
         pest_count: safeParseNum($('obsPestCount').value) || 0,
         phyto: safeParseNum($('obsPhyto').value) || 0,
@@ -4336,6 +5872,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         notes: $('obsNotes').value,
         image_url: $('obsImage').value || '',
         image_type: $('obsImageType').value || '',
+        dynamic_json: JSON.stringify(collectDynamicObservationFields()),
         created_at: existingObs ? (existingObs.created_at || new Date().toISOString()) : new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -4345,12 +5882,17 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         showToast(validationError, 'error');
         return;
       }
+      const warns = getObservationWarnings(params);
+      if (warns.length && !confirm('Data quality warnings:\n\n- ' + warns.join('\n- ') + '\n\nDo you want to continue saving this observation?')) {
+        return;
+      }
 
       const action = state.editingObservationId ? 'upsertobservation' : 'addobservation';
       const successMessage = state.editingObservationId ? 'Observation updated and synced' : 'Observation synced';
       try {
         upsertByIdLocal(state.observations, params);
         logAudit(state.editingObservationId ? 'update' : 'create', 'observation', (state.trials.find(function(t) { return String(t.id) === String(params.trial_id); })?.name || params.trial_id) + ' ' + params.date, 'DAA ' + params.daa + ' Rep ' + params.replication);
+        if (params.image_url) addImageToLibrary(params.image_url, 'observation_save');
         renderAllLocal();
         resetObservationForm();
 
@@ -4395,6 +5937,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
 
     $('btnUsePhoto').onclick = () => {
       setObservationImage($('cameraPreview').src);
+      addImageToLibrary($('cameraPreview').src, 'camera_capture');
       if (!$('obsImageType').value) $('obsImageType').value = 'field_overview';
       showToast('Photo set on observation', 'success');
       $('cameraModal').classList.remove('active');
@@ -4460,10 +6003,10 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
 
     // ===== EXPORT FUNCTIONS =====
     window.exportAsCSV = () => {
-      const rows = [['Trial', 'Date', 'DAA', 'Damage%', 'Pest Count', 'Phyto', 'Disease', 'Efficacy', 'Notes']];
+      const rows = [['Trial', 'Date', 'DAA', 'Treatment', 'Damage%', 'Pest Count', 'Phyto', 'Disease', 'Efficacy', 'Notes']];
       state.observations.forEach(o => {
         const trial = state.trials.find(t => t.id == o.trial_id);
-        rows.push([trial?.name || '', o.date, o.daa || 0, o.damage, o.pest_count, o.phyto, o.disease_severity || '', o.efficacy_rating || '', o.notes]);
+        rows.push([trial?.name || '', o.date, o.daa || 0, o.treatment || 'Control', o.damage, o.pest_count, o.phyto, o.disease_severity || '', o.efficacy_rating || '', o.notes]);
       });
       const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -4542,11 +6085,23 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       if (location.protocol === 'file:') {
         showToast('Opened as file://. Use http://localhost:5500/index.html for reliable Google Sheet sync.', 'warning');
       }
-      
-        state.settings.weatherApiKey = ($('settingWeatherApiKey').value || '').trim();
+      if ($('settingWeatherApiKey')) $('settingWeatherApiKey').value = state.settings.weatherApiKey || '';
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = () => setActiveTab(btn.dataset.tab);
       });
+
+      if ($('obsTrial')) {
+        $('obsTrial').addEventListener('change', function() {
+          renderDynamicObservationFields();
+        });
+      }
+
+      if ($('btnGenerateTemplateReport')) {
+        $('btnGenerateTemplateReport').onclick = window.generateTemplateReport;
+      }
+      if ($('btnGenerateTemplatePreview')) {
+        $('btnGenerateTemplatePreview').onclick = window.generateTemplatePreview;
+      }
 
       $('btnSaveUrl').onclick = async () => {
         state.scriptUrl = normalizeScriptUrl($('scriptUrl').value);
@@ -4557,6 +6112,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         state.settings.autoSync = $('settingAutoSync').value === 'true';
         state.settings.googleSheetUrl = ($('settingGoogleSheetUrl').value || '').trim();
         state.settings.googleDriveFolderUrl = ($('settingGoogleDriveFolderUrl').value || '').trim();
+        state.settings.weatherApiKey = ($('settingWeatherApiKey').value || '').trim();
         state.settings.googleSheetId = extractGoogleSheetId(state.settings.googleSheetUrl);
         state.settings.googleDriveFolderId = extractGoogleDriveFolderId(state.settings.googleDriveFolderUrl);
 
@@ -4665,6 +6221,11 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       renderFormIngredientDraft();
       renderDataHealth();
       setConnectivityStatus();
+      populateReportTemplateTrials();
+      populateImageTrialFilter();
+      renderImageGallery();
+      updateCompareView();
+      renderDynamicObservationFields();
 
       if (state.scriptUrl) {
         refreshAll();
