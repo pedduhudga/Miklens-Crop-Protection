@@ -627,6 +627,81 @@
       overflow: hidden;
     }
 
+    /* Trial Cards */
+    .trial-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s, transform 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+    .trial-card:hover {
+      box-shadow: 0 6px 24px rgba(5,150,105,0.15);
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+    .trial-card-body { padding: 16px; flex: 1; }
+    .trial-card-footer {
+      padding: 10px 16px;
+      background: rgba(248,250,252,0.8);
+      border-top: 1px solid var(--border);
+      border-radius: 0 0 12px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .trial-card-title { font-weight: 700; font-size: 1rem; color: var(--text); margin: 0 0 4px; }
+    .trial-card-meta { font-size: 0.8rem; color: var(--text-light); margin: 2px 0; }
+    .trial-card-stat { display: flex; flex-direction: column; align-items: center; }
+    .trial-card-stat span { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .trial-card-stat small { font-size: 0.72rem; color: var(--text-light); }
+    .trial-status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .trial-status-Active { background: rgba(34,197,94,0.15); color: #15803d; }
+    .trial-status-Completed { background: rgba(8,145,178,0.15); color: #0c7b94; }
+    .trial-status-Planned { background: rgba(249,115,22,0.15); color: #c2410c; }
+    .trial-card-report-menu {
+      position: relative;
+      display: inline-block;
+    }
+    .trial-card-report-menu .report-dropdown {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+      padding: 6px;
+      min-width: 200px;
+      z-index: 50;
+    }
+    .trial-card-report-menu.open .report-dropdown { display: block; }
+    .trial-card-report-menu .report-dropdown button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 6px 10px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--text);
+      border-radius: 4px;
+    }
+    .trial-card-report-menu .report-dropdown button:hover { background: rgba(5,150,105,0.08); color: var(--primary); }
+
     .report-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1017,16 +1092,28 @@
                   <input type="text" id="cfuConcentration" placeholder="e.g., 10^8">
                 </div>
                 <div class="form-group">
-                  <label>Carrier Material</label>
+                  <label>Carrier Material / Form</label>
                   <select id="carrierMaterial">
                     <option value="Peat">Peat</option>
                     <option value="Lignite">Lignite</option>
                     <option value="Talc">Talc</option>
                     <option value="Polymer">Polymer</option>
+                    <option value="Liquid">Liquid (broth/suspension)</option>
+                    <option value="WP">Wettable Powder (WP)</option>
+                    <option value="EC">Emulsifiable Concentrate (EC)</option>
                   </select>
                 </div>
               </div>
               <div class="form-grid">
+                <div class="form-group">
+                  <label>Product Form</label>
+                  <select id="bioProductForm">
+                    <option value="Solid">Solid (powder/granule)</option>
+                    <option value="Liquid">Liquid</option>
+                    <option value="Paste">Paste/Gel</option>
+                    <option value="Wettable">Wettable Powder</option>
+                  </select>
+                </div>
                 <div class="form-group">
                   <label>Viability (%)</label>
                   <input type="number" id="viability" min="0" max="100" value="85">
@@ -1072,7 +1159,14 @@
                 </div>
                 <div class="form-group">
                   <label>Unit</label>
-                  <input type="text" id="formIngredientUnit" value="kg">
+                  <select id="formIngredientUnit">
+                    <option value="kg">kg</option>
+                    <option value="ltr">ltr</option>
+                    <option value="g">g</option>
+                    <option value="ml">ml</option>
+                    <option value="oz">oz</option>
+                    <option value="lb">lb</option>
+                  </select>
                 </div>
               </div>
               <div class="export-buttons" style="margin-bottom:10px;">
@@ -1126,7 +1220,14 @@
               </div>
               <div class="form-group">
                 <label>Unit</label>
-                <input type="text" id="ingredientUnit" value="kg">
+                <select id="ingredientUnit">
+                  <option value="kg">kg</option>
+                  <option value="ltr">ltr</option>
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="oz">oz</option>
+                  <option value="lb">lb</option>
+                </select>
               </div>
             </div>
             <div class="form-grid three">
@@ -1159,98 +1260,27 @@
 
         <!-- TRIALS -->
         <section id="trials" class="panel">
-          <div class="card">
-            <h3>Create New Trial</h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Trial Name *</label>
-                <input type="text" id="trialName" placeholder="e.g., Field Efficacy Test - Plot A">
+          <div class="card" style="padding:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+              <div>
+                <h3 style="margin:0;">🧪 Field &amp; Lab Trials</h3>
+                <small id="trialsCountLabel" style="color:var(--text-light);">0 trials</small>
               </div>
-              <div class="form-group">
-                <label>Trial Type *</label>
-                <select id="trialType">
-                  <option value="">Select Type</option>
-                  <option value="Lab">Lab</option>
-                  <option value="Field">Field</option>
-                  <option value="Greenhouse">Greenhouse</option>
-                  <option value="Micro-plot">Micro-plot</option>
-                  <option value="On-farm">On-farm</option>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <input type="text" id="trialsSearch" placeholder="Search trials..." style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:0.88rem;width:180px;" oninput="renderTrials()">
+                <select id="trialsStatusFilter" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:0.88rem;" onchange="renderTrials()">
+                  <option value="">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Planned">Planned</option>
                 </select>
-              </div>
-              <div class="form-group">
-                <label>Formulation *</label>
-                <select id="trialFormulation"></select>
+                <button class="btn-primary" onclick="window.openTrialModal()">+ New Trial</button>
               </div>
             </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Crop Type</label>
-                <input type="text" id="cropType" placeholder="e.g., Rice, Wheat, Cotton">
-              </div>
-              <div class="form-group">
-                <label>Crop Stage</label>
-                <select id="cropStage">
-                  <option value="">Select</option>
-                  <option value="Seedling">Seedling</option>
-                  <option value="Vegetative">Vegetative</option>
-                  <option value="Reproductive">Reproductive</option>
-                  <option value="Maturity">Maturity</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Number of Replications</label>
-                <input type="number" id="replications" min="4" max="12" value="4">
-              </div>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Start Date</label>
-                <input type="date" id="trialStart">
-              </div>
-              <div class="form-group">
-                <label>End Date</label>
-                <input type="date" id="trialEnd">
-              </div>
-              <div class="form-group">
-                <label>Location / Field</label>
-                <input type="text" id="trialLocation" placeholder="e.g., North Field, Karnataka">
-              </div>
-            </div>
-
-            <div class="form-grid three">
-              <div class="form-group">
-                <label>Latitude</label>
-                <input type="number" id="trialLatitude" step="0.000001" placeholder="12.971599">
-              </div>
-              <div class="form-group">
-                <label>Longitude</label>
-                <input type="number" id="trialLongitude" step="0.000001" placeholder="77.594566">
-              </div>
-              <div class="form-group">
-                <label>&nbsp;</label>
-                <button class="btn-secondary" type="button" id="btnCaptureGps">📍 Use Current GPS</button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Observation Schedule (comma-separated days)</label>
-              <input type="text" id="obsSchedule" value="1,3,5,7,10,14,21" placeholder="e.g., 1,3,5,7,14,21">
-            </div>
-
-            <button class="btn-primary" id="btnAddTrial" style="width: 100%;">Create Trial</button>
           </div>
-
-          <div class="card">
-            <h3>Active Trials</h3>
-            <table class="data-table" id="trialsTable">
-              <thead>
-                <tr><th>Trial Name</th><th>Type</th><th>Formulation</th><th>Replications</th><th>Location</th><th>Status</th><th>Progress</th><th>Actions</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <div id="trialsCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:4px;"></div>
+          <!-- Hidden table kept for JS backward compatibility -->
+          <table style="display:none;" id="trialsTable"><thead><tr></tr></thead><tbody></tbody></table>
         </section>
 
         <!-- OBSERVATIONS -->
@@ -1288,12 +1318,13 @@
                 <label>Treatment Group *</label>
                 <select id="obsTreatment">
                   <option value="Control">Control (Untreated)</option>
-                  <option value="T1">T1 (25% dosage)</option>
-                  <option value="T2">T2 (50% dosage)</option>
-                  <option value="T3">T3 (75% dosage)</option>
-                  <option value="T4">T4 (100% dosage)</option>
-                  <option value="T5">T5 (125% dosage)</option>
+                  <option value="T1">T1</option>
+                  <option value="T2">T2</option>
+                  <option value="T3">T3</option>
+                  <option value="T4">T4</option>
+                  <option value="T5">T5</option>
                 </select>
+                <small id="obsTreatmentHint" style="color:var(--text-light);font-size:0.78rem;display:block;margin-top:3px;">Select a trial above to see custom treatment labels.</small>
               </div>
               <div class="form-group">
                 <label>Pest/Weed Cover (%)</label>
@@ -1432,6 +1463,81 @@
 
           <!-- PEST / DISEASE REFERENCE LIBRARY -->
           <div class="card">
+            <h3>🌾 Harvest Record</h3>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:12px;">Record post-harvest yield and quality data for each trial.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Trial *</label>
+                <select id="harvTrial"><option value="">Select Trial</option></select>
+              </div>
+              <div class="form-group">
+                <label>Harvest Date *</label>
+                <input type="date" id="harvDate">
+              </div>
+              <div class="form-group">
+                <label>Crop</label>
+                <input type="text" id="harvCrop" placeholder="e.g., Rice, Wheat, Maize">
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Yield</label>
+                <input type="number" id="harvYield" min="0" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label>Yield Unit</label>
+                <select id="harvYieldUnit">
+                  <option value="kg/acre">kg/acre</option>
+                  <option value="ton/acre">ton/acre</option>
+                  <option value="kg/ha">kg/ha</option>
+                  <option value="ton/ha">ton/ha</option>
+                  <option value="q/ha">q/ha (quintal/ha)</option>
+                  <option value="ltr/acre">ltr/acre</option>
+                  <option value="count/plot">count/plot</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Quality Grade</label>
+                <select id="harvGrade">
+                  <option value="">Select</option>
+                  <option value="A">A – Premium</option>
+                  <option value="B">B – Good</option>
+                  <option value="C">C – Average</option>
+                  <option value="D">D – Below average</option>
+                  <option value="Reject">Reject</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Moisture Content (%)</label>
+                <input type="number" id="harvMoisture" min="0" max="100" step="0.1" placeholder="0-100">
+              </div>
+              <div class="form-group">
+                <label>1000-Grain Weight (g)</label>
+                <input type="number" id="harvGrainWeight" min="0" step="0.01" placeholder="grams">
+              </div>
+              <div class="form-group">
+                <label>Plot Size (m²)</label>
+                <input type="number" id="harvPlotSize" min="0" step="0.01" placeholder="m²">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Harvest Notes / Observations</label>
+              <textarea id="harvNotes" placeholder="Additional harvest observations, quality notes, pest damage at harvest..."></textarea>
+            </div>
+            <button class="btn-primary" id="btnSaveHarvest" style="width:100%;">Save Harvest Record</button>
+            <div style="margin-top:16px;">
+              <h4 style="margin:0 0 8px;color:var(--text-light);font-size:0.88rem;">Harvest Records</h4>
+              <table class="data-table" id="harvestTable">
+                <thead><tr><th>Trial</th><th>Date</th><th>Crop</th><th>Yield</th><th>Grade</th><th>Moisture%</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PEST / DISEASE REFERENCE LIBRARY -->
+          <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
               <h3 style="margin:0;">🦗 Pest &amp; Disease Reference Library</h3>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1543,18 +1649,69 @@
 
             <div class="form-grid">
               <div class="form-group">
+                <label>Crop (for this observation)</label>
+                <input type="text" id="obsCropPhoto" placeholder="e.g., Rice, Wheat, Cotton">
+              </div>
+              <div class="form-group">
+                <label>Crop Rotation / Season</label>
+                <input type="text" id="obsRotation" placeholder="e.g., Kharif 2024, Rabi, 2nd crop">
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
                 <label>Observation Image Type</label>
-                <select id="obsImageType">
+                <select id="obsImageType" onchange="handleObsImageTypeChange()">
                   <option value="">None</option>
                   <option value="field_overview">Field overview</option>
                   <option value="pest_closeup">Pest or disease close-up</option>
                   <option value="plant_damage">Plant damage</option>
                   <option value="microscopic">Microscopic</option>
+                  <option value="lab_observation">Lab observation</option>
+                  <option value="harvest">Post-harvest</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Upload Image</label>
                 <input type="file" id="obsImageFile" accept="image/*">
+              </div>
+            </div>
+
+            <div id="microscopicExtraFields" style="display:none;background:var(--bg);border-radius:8px;padding:12px;margin-top:4px;">
+              <h4 style="margin:0 0 8px;font-size:0.88rem;color:var(--primary);">🔬 Microscopic Observation Details</h4>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Magnification</label>
+                  <select id="obsMagnification">
+                    <option value="10x">10x</option>
+                    <option value="40x">40x</option>
+                    <option value="100x">100x</option>
+                    <option value="400x">400x</option>
+                    <option value="1000x">1000x</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Slide ID / Label</label>
+                  <input type="text" id="obsSlideId" placeholder="e.g., S-001, Field A">
+                </div>
+                <div class="form-group">
+                  <label>Stain Type</label>
+                  <input type="text" id="obsStainType" placeholder="e.g., Gram stain, Lactophenol blue">
+                </div>
+                <div class="form-group">
+                  <label>Microscope Type</label>
+                  <select id="obsMicroscopeType">
+                    <option value="Bright-field">Bright-field</option>
+                    <option value="Phase-contrast">Phase-contrast</option>
+                    <option value="Fluorescence">Fluorescence</option>
+                    <option value="Dark-field">Dark-field</option>
+                    <option value="SEM">SEM (Electron)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Microscopic Notes (spore count, mobility, morphology)</label>
+                <input type="text" id="obsMicroscopicNotes" placeholder="e.g., 3.2×10^6 spores/mL, motile rods">
               </div>
             </div>
 
@@ -1670,7 +1827,7 @@
         <!-- SETTINGS -->
         <section id="datamanagement" class="panel">
           <div class="card">
-            <h3>Data Backup & Restore</h3>
+            <h3>Data Backup &amp; Restore</h3>
             <div class="export-buttons">
               <button class="btn-primary btn-sm" onclick="window.exportFullBackup()">📦 Export Full Backup</button>
               <button class="btn-secondary btn-sm" onclick="window.triggerImportBackup()">📤 Import Backup</button>
@@ -1679,6 +1836,26 @@
             </div>
             <input id="importBackupFile" type="file" accept="application/json" style="display:none;">
           </div>
+
+          <div class="card">
+            <h3>📅 Date-Filtered Export</h3>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:12px;">Export only the observations and trials within a specific date range.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>From Date</label>
+                <input type="date" id="backupFromDate">
+              </div>
+              <div class="form-group">
+                <label>To Date</label>
+                <input type="date" id="backupToDate">
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn-primary" onclick="window.exportDateFilteredBackup()">📅 Export Filtered Backup</button>
+              </div>
+            </div>
+          </div>
+
           <div class="card">
             <h3>Data Health</h3>
             <div id="dataHealthInfo"></div>
@@ -1768,6 +1945,150 @@
         </section>
       </div>
     </main>
+  </div>
+
+  <!-- TRIAL FORM MODAL -->
+  <div id="trialModal" class="modal">
+    <div class="modal-content" style="max-width:820px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-header">
+        <h3 id="trialModalTitle">➕ New Trial</h3>
+        <button class="modal-close" onclick="window.closeTrialModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Trial Name *</label>
+            <input type="text" id="trialName" placeholder="e.g., Field Efficacy Test - Plot A">
+          </div>
+          <div class="form-group">
+            <label>Trial Type *</label>
+            <select id="trialType">
+              <option value="">Select Type</option>
+              <option value="Lab">Lab</option>
+              <option value="Field">Field</option>
+              <option value="Greenhouse">Greenhouse</option>
+              <option value="Micro-plot">Micro-plot</option>
+              <option value="On-farm">On-farm</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Formulation *</label>
+            <select id="trialFormulation"></select>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Crop Type</label>
+            <input type="text" id="cropType" placeholder="e.g., Rice, Wheat, Cotton">
+          </div>
+          <div class="form-group">
+            <label>Crop Stage</label>
+            <select id="cropStage">
+              <option value="">Select</option>
+              <option value="Seedling">Seedling</option>
+              <option value="Vegetative">Vegetative</option>
+              <option value="Reproductive">Reproductive</option>
+              <option value="Maturity">Maturity</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Number of Replications</label>
+            <input type="number" id="replications" min="4" max="12" value="4">
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Investigator Name</label>
+            <input type="text" id="trialInvestigator" placeholder="Lead scientist / agronomist name">
+          </div>
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="trialStart">
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="trialEnd">
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Spray Date 1</label>
+            <input type="date" id="trialSprayDate1">
+          </div>
+          <div class="form-group">
+            <label>Spray Date 2</label>
+            <input type="date" id="trialSprayDate2">
+          </div>
+          <div class="form-group">
+            <label>Spray Date 3</label>
+            <input type="date" id="trialSprayDate3">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Location / Field</label>
+          <input type="text" id="trialLocation" placeholder="e.g., North Field, Karnataka">
+        </div>
+
+        <div class="form-grid three">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="trialLatitude" step="0.000001" placeholder="12.971599">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="trialLongitude" step="0.000001" placeholder="77.594566">
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn-secondary" type="button" id="btnCaptureGps">📍 Use Current GPS</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Observation Schedule (comma-separated days)</label>
+          <input type="text" id="obsSchedule" value="1,3,5,7,10,14,21" placeholder="e.g., 1,3,5,7,14,21">
+        </div>
+
+        <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:8px;">
+          <h4 style="margin:0 0 10px;font-size:0.9rem;color:var(--text-light);">Treatment Labels &amp; Dosages (enter descriptions manually)</h4>
+          <div class="form-grid three">
+            <div class="form-group">
+              <label>Control Label</label>
+              <input type="text" id="treatLabelControl" value="Control (Untreated)" placeholder="Control label">
+            </div>
+            <div class="form-group">
+              <label>T1 Label &amp; Dose</label>
+              <input type="text" id="treatLabelT1" placeholder="e.g., Neem 2 ml/L">
+            </div>
+            <div class="form-group">
+              <label>T2 Label &amp; Dose</label>
+              <input type="text" id="treatLabelT2" placeholder="e.g., Product X 3 ml/L">
+            </div>
+            <div class="form-group">
+              <label>T3 Label &amp; Dose</label>
+              <input type="text" id="treatLabelT3" placeholder="e.g., Product X 5 ml/L">
+            </div>
+            <div class="form-group">
+              <label>T4 Label &amp; Dose</label>
+              <input type="text" id="treatLabelT4" placeholder="e.g., Standard check">
+            </div>
+            <div class="form-group">
+              <label>T5 Label &amp; Dose</label>
+              <input type="text" id="treatLabelT5" placeholder="e.g., Combination">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn-primary" id="btnAddTrial" style="flex:1;">Save Trial</button>
+          <button class="btn-secondary" onclick="window.closeTrialModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- WEATHER MODAL -->
@@ -2008,7 +2329,8 @@
       selectedImageId: '',
       compareBeforeId: '',
       compareAfterId: '',
-      annotator: { mode: 'pen', drawing: false, startX: 0, startY: 0 }
+      annotator: { mode: 'pen', drawing: false, startX: 0, startY: 0 },
+      harvestRecords: (function() { try { return JSON.parse(localStorage.getItem('agri-harvest') || '[]'); } catch(e) { return []; } })()
     };
 
     const $ = id => document.getElementById(id);
@@ -2168,6 +2490,7 @@
       renderIngredientMaster();
       renderImageGallery();
       updateCompareView();
+      renderHarvestTable();
       if ($('dashboard').classList.contains('active')) renderDashboard();
       if ($('fieldmap').classList.contains('active')) renderFieldMap();
       if ($('reports').classList.contains('active')) renderReportPreview();
@@ -2334,7 +2657,18 @@
       $('trialLongitude').value = '';
       $('trialStart').value = '';
       $('trialEnd').value = '';
-      $('btnAddTrial').textContent = 'Create Trial';
+      $('trialInvestigator').value = '';
+      $('trialSprayDate1').value = '';
+      $('trialSprayDate2').value = '';
+      $('trialSprayDate3').value = '';
+      $('treatLabelControl').value = 'Control (Untreated)';
+      $('treatLabelT1').value = '';
+      $('treatLabelT2').value = '';
+      $('treatLabelT3').value = '';
+      $('treatLabelT4').value = '';
+      $('treatLabelT5').value = '';
+      $('btnAddTrial').textContent = 'Save Trial';
+      $('trialModalTitle').textContent = '➕ New Trial';
     }
 
     function fillTrialForm(item) {
@@ -2352,10 +2686,41 @@
       $('trialLongitude').value = item.longitude ?? '';
       $('trialStart').value = item.start_date || '';
       $('trialEnd').value = item.end_date || '';
+      $('trialInvestigator').value = item.investigator || '';
+      $('trialSprayDate1').value = item.spray_date1 || '';
+      $('trialSprayDate2').value = item.spray_date2 || '';
+      $('trialSprayDate3').value = item.spray_date3 || '';
+      const labels = item.treatment_labels || {};
+      $('treatLabelControl').value = labels.Control || 'Control (Untreated)';
+      $('treatLabelT1').value = labels.T1 || '';
+      $('treatLabelT2').value = labels.T2 || '';
+      $('treatLabelT3').value = labels.T3 || '';
+      $('treatLabelT4').value = labels.T4 || '';
+      $('treatLabelT5').value = labels.T5 || '';
       $('btnAddTrial').textContent = 'Update Trial';
-      setActiveTab('trials');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      $('trialModalTitle').textContent = '✏️ Edit Trial';
+      window.openTrialModal();
     }
+
+    window.openTrialModal = function() {
+      const modal = $('trialModal');
+      if (modal) modal.classList.add('active');
+    };
+
+    window.closeTrialModal = function() {
+      const modal = $('trialModal');
+      if (modal) modal.classList.remove('active');
+      // Reset form if not editing
+      if (!state.editingTrialId) {
+        $('trialName').value = '';
+        $('trialType').value = '';
+        $('replications').value = 4;
+        $('obsSchedule').value = '1,3,5,7,10,14,21';
+      }
+      $('btnAddTrial').textContent = 'Save Trial';
+      $('trialModalTitle').textContent = '➕ New Trial';
+      state.editingTrialId = null;
+    };
 
     function resetObservationForm() {
       state.editingObservationId = null;
@@ -2373,6 +2738,10 @@
       $('obsImageType').value = '';
       $('obsImageFile').value = '';
       setObservationImage('');
+      if ($('obsCropPhoto')) $('obsCropPhoto').value = '';
+      if ($('obsRotation')) $('obsRotation').value = '';
+      const microscopicExtra = $('microscopicExtraFields');
+      if (microscopicExtra) microscopicExtra.style.display = 'none';
       const box = $('obsDynamicFields');
       if (box) { box.style.display = 'none'; box.innerHTML = ''; }
       $('btnAddObservation').textContent = 'Save Observation';
@@ -2394,6 +2763,19 @@
       $('obsNotes').value = item.notes || '';
       $('obsImageType').value = item.image_type || '';
       setObservationImage(item.image_url || '');
+      if ($('obsCropPhoto')) $('obsCropPhoto').value = item.crop_photo || '';
+      if ($('obsRotation')) $('obsRotation').value = item.rotation || '';
+      // Restore microscopic fields
+      if (item.image_type === 'microscopic' && item.microscopic_data) {
+        const mdata = safeJsonParse(item.microscopic_data, {});
+        if ($('obsMagnification') && mdata.magnification) $('obsMagnification').value = mdata.magnification;
+        if ($('obsSlideId') && mdata.slide_id) $('obsSlideId').value = mdata.slide_id;
+        if ($('obsStainType') && mdata.stain_type) $('obsStainType').value = mdata.stain_type;
+        if ($('obsMicroscopeType') && mdata.microscope_type) $('obsMicroscopeType').value = mdata.microscope_type;
+        if ($('obsMicroscopicNotes') && mdata.notes) $('obsMicroscopicNotes').value = mdata.notes;
+        const extra = $('microscopicExtraFields');
+        if (extra) extra.style.display = 'block';
+      }
       renderDynamicObservationFields();
       const dynamic = safeJsonParse(item.dynamic_json, {}) || {};
       const dynamicMap = {
@@ -4091,35 +4473,140 @@
     }
 
     function renderTrials() {
-      const tbody = $('trialsTable').querySelector('tbody');
-      tbody.innerHTML = state.trials.map(t => {
-        const progress = getObservationProgress(t);
-        return `
-          <tr>
-            <td><strong>${t.name}</strong></td>
-            <td>${t.type}</td>
-            <td>${state.formulations.find(f=>f.id==t.formulation_id)?.name || 'N/A'}</td>
-            <td>${t.replications || 4}</td>
-            <td>${t.location || '-'}<br><small style="color:var(--text-light);">${formatCoordinate(t.latitude)}, ${formatCoordinate(t.longitude)}</small></td>
-            <td><span class="badge badge-primary">${t.status}</span></td>
-            <td><span class="badge ${progress.className}">${progress.label}</span><br><small style="color:var(--text-light);">${progress.recorded}/${progress.expected} recorded</small></td>
-            <td>
-              <button class="btn-sm btn-secondary" onclick="window.editTrial('${t.id}')">Edit</button>
-              <button class="btn-sm btn-secondary" onclick="window.deleteTrial('${t.id}')">Delete</button>
-            </td>
-          </tr>
-        `;
-      }).join('') || '<tr><td colspan="8" style="text-align:center;color:#999;">No trials yet</td></tr>';
+      const grid = $('trialsCardGrid');
+      if (!grid) return;
+
+      const searchQ = ($('trialsSearch')?.value || '').toLowerCase().trim();
+      const statusF = $('trialsStatusFilter')?.value || '';
+
+      let filtered = state.trials.filter(t => {
+        const matchSearch = !searchQ ||
+          (t.name || '').toLowerCase().includes(searchQ) ||
+          (t.type || '').toLowerCase().includes(searchQ) ||
+          (t.location || '').toLowerCase().includes(searchQ) ||
+          (t.crop_type || '').toLowerCase().includes(searchQ);
+        const matchStatus = !statusF || (t.status || 'Active') === statusF;
+        return matchSearch && matchStatus;
+      });
+
+      const lbl = $('trialsCountLabel');
+      if (lbl) lbl.textContent = filtered.length + ' trial' + (filtered.length !== 1 ? 's' : '');
+
+      if (!filtered.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-light);"><p style="font-size:1.1rem;margin:0;">No trials found</p><p style="margin:8px 0 0;font-size:0.9rem;">Click <strong>+ New Trial</strong> to create your first trial.</p></div>';
+      } else {
+        grid.innerHTML = filtered.map(t => {
+          const progress = getObservationProgress(t);
+          const formulation = state.formulations.find(f => f.id == t.formulation_id);
+          const sprayDates = [t.spray_date1, t.spray_date2, t.spray_date3].filter(Boolean).map(d => new Date(d).toLocaleDateString()).join(', ');
+          const labels = t.treatment_labels || {};
+          const statusClass = 'trial-status-' + (t.status || 'Active');
+          const progressPct = progress.expected > 0 ? Math.round((progress.recorded / progress.expected) * 100) : 0;
+          return `
+          <div class="trial-card">
+            <div class="trial-card-body">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <div style="flex:1;min-width:0;">
+                  <p class="trial-card-title">${escapeHtml(t.name || 'Untitled Trial')}</p>
+                  <span class="trial-status-badge ${statusClass}">${t.status || 'Active'}</span>
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+                  <button class="btn-sm btn-secondary" onclick="window.editTrial('${t.id}')" title="Edit">✏️</button>
+                  <button class="btn-sm btn-secondary" onclick="window.deleteTrial('${t.id}')" title="Delete" style="color:var(--danger);">🗑️</button>
+                </div>
+              </div>
+
+              <p class="trial-card-meta">🧪 ${t.type || '—'} &nbsp;|&nbsp; 🌱 ${t.crop_type || '—'} (${t.crop_stage || '—'})</p>
+              <p class="trial-card-meta">🧬 ${formulation ? formulation.name : 'No formulation'}</p>
+              ${t.investigator ? `<p class="trial-card-meta">👤 ${escapeHtml(t.investigator)}</p>` : ''}
+              ${t.location ? `<p class="trial-card-meta">📍 ${escapeHtml(t.location)}</p>` : ''}
+              ${sprayDates ? `<p class="trial-card-meta">💉 Sprays: ${sprayDates}</p>` : ''}
+
+              <div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                <div class="trial-card-stat"><span>${progress.recorded}</span><small>Recorded</small></div>
+                <div class="trial-card-stat"><span>${progress.expected}</span><small>Expected</small></div>
+                <div class="trial-card-stat"><span>${progressPct}%</span><small>Progress</small></div>
+                <div class="trial-card-stat"><span>${t.replications || 4}</span><small>Reps</small></div>
+              </div>
+
+              ${Object.keys(labels).length > 0 ? `
+              <div style="margin-top:8px;font-size:0.78rem;color:var(--text-light);">
+                <strong>Treatments:</strong>
+                ${Object.entries(labels).map(([k,v]) => v ? `<span style="display:inline-block;background:var(--bg);border-radius:4px;padding:1px 6px;margin:2px;border:1px solid var(--border);">${k}: ${escapeHtml(v)}</span>` : '').filter(Boolean).join('')}
+              </div>` : ''}
+
+              <div style="margin-top:10px;">
+                <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
+                  <div style="height:100%;background:${progressPct>=80?'var(--primary)':progressPct>=50?'#f59e0b':'#ef4444'};width:${progressPct}%;border-radius:3px;transition:width 0.4s;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="trial-card-footer">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn-sm btn-secondary" onclick="window.editTrial('${t.id}')">Edit</button>
+                <button class="btn-sm btn-secondary" onclick="window.setActiveTab && setActiveTab('observations');setTimeout(()=>{if($('obsTrial')){$('obsTrial').value='${t.id}';$('obsTrial').dispatchEvent(new Event('change'));}},100)">Add Obs</button>
+              </div>
+              <div class="trial-card-report-menu" id="reportMenu_${t.id}">
+                <button class="btn-sm btn-secondary" onclick="document.getElementById('reportMenu_${t.id}').classList.toggle('open')">📊 Reports ▾</button>
+                <div class="report-dropdown">
+                  <button onclick="document.getElementById('reportMenu_${t.id}').classList.remove('open');window.generateFieldVisitReport && window.generateFieldVisitReport('${t.id}')">📋 Field Visit Report</button>
+                  <button onclick="document.getElementById('reportMenu_${t.id}').classList.remove('open');window.generateTrialSummaryReport && window.generateTrialSummaryReport('${t.id}')">📄 Trial Summary</button>
+                  <button onclick="document.getElementById('reportMenu_${t.id}').classList.remove('open');window.generateRegulatorySnapshotReport && window.generateRegulatorySnapshotReport('${t.id}')">📑 Regulatory Snapshot</button>
+                  <button onclick="document.getElementById('reportMenu_${t.id}').classList.remove('open');const s=$('dossierTrialSelect');if(s){s.value='${t.id}';}setActiveTab('reports');">📁 Full Dossier</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      // Close all open report menus when clicking outside (wired up once in init)
+      window._trialReportMenuClickHandler = window._trialReportMenuClickHandler || (function() {
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.trial-card-report-menu')) {
+            document.querySelectorAll('.trial-card-report-menu.open').forEach(m => m.classList.remove('open'));
+          }
+        });
+        return true;
+      })();
 
       const sel = $('obsTrial');
-      sel.innerHTML = '<option value="">Select...</option>' + state.trials.map(t => 
-        `<option value="${t.id}">${t.name}</option>`
-      ).join('');
+      if (sel) {
+        sel.innerHTML = '<option value="">Select...</option>' + state.trials.map(t => 
+          `<option value="${t.id}">${t.name}</option>`
+        ).join('');
+      }
 
       const calSel = $('obsCalendarTrial');
-      calSel.innerHTML = '<option value="">Select Trial</option>' + state.trials.map(t => 
-        `<option value="${t.id}">${t.name}</option>`
-      ).join('');
+      if (calSel) {
+        calSel.innerHTML = '<option value="">Select Trial</option>' + state.trials.map(t => 
+          `<option value="${t.id}">${t.name}</option>`
+        ).join('');
+      }
+
+      // Harvest trial selector
+      const harvSel = $('harvTrial');
+      if (harvSel) {
+        harvSel.innerHTML = '<option value="">Select Trial</option>' + state.trials.map(t =>
+          `<option value="${t.id}">${t.name}</option>`
+        ).join('');
+      }
+
+      // Financial / dossier selectors
+      ['dossierTrialSelect', 'controlTrialSelect', 'financialTrialFilter'].forEach(selId => {
+        const el = $(selId);
+        if (!el) return;
+        const cur = el.value;
+        if (selId === 'dossierTrialSelect') {
+          el.innerHTML = '<option value="">Select Trial...</option>' + state.trials.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else if (selId === 'controlTrialSelect') {
+          el.innerHTML = '<option value="">None (raw efficacy)</option>' + state.trials.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else if (selId === 'financialTrialFilter') {
+          el.innerHTML = '<option value="">All Trials</option>' + state.trials.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+        el.value = cur;
+      });
     }
 
     function renderObservations() {
@@ -4146,6 +4633,75 @@
           </tr>
         `;
       }).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;">No observations yet</td></tr>';
+    }
+
+    // === MICROSCOPIC OBS TYPE TOGGLE ===
+    window.handleObsImageTypeChange = function() {
+      const type = ($('obsImageType') ? $('obsImageType').value : '');
+      const extra = $('microscopicExtraFields');
+      if (extra) extra.style.display = (type === 'microscopic') ? 'block' : 'none';
+    };
+
+    // === HARVEST RECORDS ===
+    function renderHarvestTable() {
+      const tbody = $('harvestTable')?.querySelector('tbody');
+      if (!tbody) return;
+      tbody.innerHTML = state.harvestRecords.map(h => {
+        const trial = state.trials.find(t => String(t.id) === String(h.trial_id));
+        return `<tr>
+          <td>${trial ? trial.name : 'N/A'}</td>
+          <td>${h.date ? new Date(h.date).toLocaleDateString() : '-'}</td>
+          <td>${h.crop || '-'}</td>
+          <td>${h.yield != null ? h.yield + ' ' + (h.yield_unit || '') : '-'}</td>
+          <td>${h.grade || '-'}</td>
+          <td>${h.moisture != null ? h.moisture + '%' : '-'}</td>
+          <td><button class="btn-sm btn-secondary" style="color:var(--danger);" onclick="window.deleteHarvestRecord('${h.id}')">Delete</button></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;">No harvest records yet</td></tr>';
+    }
+
+    window.deleteHarvestRecord = function(id) {
+      state.harvestRecords = state.harvestRecords.filter(h => String(h.id) !== String(id));
+      localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
+      renderHarvestTable();
+      showToast('Harvest record deleted', 'info');
+    };
+
+    // === DATE-FILTERED BACKUP ===
+    window.exportDateFilteredBackup = function() {
+      const from = $('backupFromDate')?.value;
+      const to = $('backupToDate')?.value;
+      if (!from || !to) { showToast('Please select both From and To dates', 'error'); return; }
+      const fromD = new Date(from);
+      const toD = new Date(to); toD.setHours(23, 59, 59);
+      const filteredObs = state.observations.filter(o => { const d = new Date(o.date); return d >= fromD && d <= toD; });
+      const filteredTrialIds = new Set(filteredObs.map(o => o.trial_id));
+      const filteredTrials = state.trials.filter(t => {
+        if (filteredTrialIds.has(t.id)) return true;
+        if (t.start_date) { const d = new Date(t.start_date); return d >= fromD && d <= toD; }
+        return false;
+      });
+      const backup = {
+        settings: state.settings,
+        trials: filteredTrials,
+        observations: filteredObs,
+        ingredients: state.ingredients,
+        formulations: state.formulations,
+        dateRange: { from, to },
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agri-backup-filtered-${from}-to-${to}.json`;
+      a.click();
+      showToast(`Exported ${filteredTrials.length} trials and ${filteredObs.length} observations`, 'success');
+    };
+
+    // === ESCAPE HTML HELPER (used in trial cards) ===
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
     function renderObservationCalendar() {
@@ -5134,8 +5690,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       }
       const unitCost = findIngredientCostByName(name);
       if (unitCost <= 0) {
-        showToast('No cost found for this ingredient. Add it in Ingredient Costs tab first.', 'warning');
-        return;
+        showToast('No cost found for "' + name + '". You can add it in Ingredient Costs tab. Adding with ₹0 cost.', 'warning');
       }
       state.formIngredientDraft.push({ name, qty, unit, unitCost });
       renderFormIngredientDraft();
@@ -5264,6 +5819,16 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       const existingTrial = state.editingTrialId
         ? state.trials.find(function (t) { return String(t.id) === String(state.editingTrialId); })
         : null;
+
+      const treatmentLabels = {
+        Control: $('treatLabelControl').value.trim() || 'Control (Untreated)',
+        T1: $('treatLabelT1').value.trim(),
+        T2: $('treatLabelT2').value.trim(),
+        T3: $('treatLabelT3').value.trim(),
+        T4: $('treatLabelT4').value.trim(),
+        T5: $('treatLabelT5').value.trim()
+      };
+
       const params = {
         id: state.editingTrialId || ('trial_' + Date.now()),
         name: name,
@@ -5278,6 +5843,11 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         longitude: safeParseNum($('trialLongitude').value),
         start_date: $('trialStart').value,
         end_date: $('trialEnd').value,
+        investigator: $('trialInvestigator').value.trim(),
+        spray_date1: $('trialSprayDate1').value,
+        spray_date2: $('trialSprayDate2').value,
+        spray_date3: $('trialSprayDate3').value,
+        treatment_labels: treatmentLabels,
         status: existingTrial ? (existingTrial.status || 'Active') : 'Active',
         observations: existingTrial ? (existingTrial.observations || []) : [],
         created_at: existingTrial ? (existingTrial.created_at || new Date().toISOString()) : new Date().toISOString(),
@@ -5291,6 +5861,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         logAudit(state.editingTrialId ? 'update' : 'create', 'trial', params.name, state.editingTrialId ? 'Updated' : 'Created');
         renderAllLocal();
         resetTrialForm();
+        window.closeTrialModal();
 
         showToast('Saved locally. Syncing with Google Sheet...', 'info');
         await ajax(action, params);
@@ -5306,21 +5877,37 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       }
     };
 
-    function buildReportRows() {
-      return state.trials.map(trial => {
+    function buildReportRows(filterTrialId) {
+      const trials = filterTrialId
+        ? state.trials.filter(t => String(t.id) === String(filterTrialId))
+        : state.trials;
+      return trials.map(trial => {
         const trialObs = state.observations.filter(o => o.trial_id == trial.id);
         const damages = trialObs.map(o => safeParseNum(o.damage)).filter(v => v !== null);
         const meanDamage = damages.length ? (damages.reduce((a,b) => a+b, 0) / damages.length) : 0;
         const efficacy = (100 - meanDamage).toFixed(1);
+        const labels = trial.treatment_labels || {};
+        const sprayDates = [trial.spray_date1, trial.spray_date2, trial.spray_date3].filter(Boolean);
         return {
           trialId: trial.id,
           trial: trial.name || '-',
           type: trial.type || '-',
+          crop: trial.crop_type || '-',
+          cropStage: trial.crop_stage || '-',
+          formulation: trial.formulation || '-',
           location: trial.location || '-',
           gps: `${formatCoordinate(trial.latitude)}, ${formatCoordinate(trial.longitude)}`,
+          investigator: trial.investigator || '-',
+          sprayDates: sprayDates.length
+            ? sprayDates.map(d => { try { return new Date(d).toLocaleDateString(); } catch(e) { return d; } }).join(', ')
+            : '-',
           reps: trial.replications || 0,
           obsCount: trialObs.length,
-          efficacy
+          efficacy,
+          treatmentLabels: labels,
+          startDate: trial.start_date || '-',
+          endDate: trial.end_date || '-',
+          obsData: trialObs
         };
       });
     }
@@ -5338,12 +5925,16 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
             <tr style="background:#e2e8f0;">
               <th style="padding:6px;border:1px solid #cbd5e1;">Trial</th>
               <th style="padding:6px;border:1px solid #cbd5e1;">Type</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Crop</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Investigator</th>
               <th style="padding:6px;border:1px solid #cbd5e1;">Location</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Spray Dates</th>
+              <th style="padding:6px;border:1px solid #cbd5e1;">Obs</th>
               <th style="padding:6px;border:1px solid #cbd5e1;">Efficacy %</th>
             </tr>
           </thead>
           <tbody>
-            ${rows.map(r => `<tr><td style="padding:6px;border:1px solid #e2e8f0;">${r.trial}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.type}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.location}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.efficacy}</td></tr>`).join('') || '<tr><td colspan="4" style="padding:8px;text-align:center;border:1px solid #e2e8f0;">No trial data</td></tr>'}
+            ${rows.map(r => `<tr><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.trial)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.type)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.crop)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.investigator)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.location)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${escapeHtml(r.sprayDates)}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.obsCount}</td><td style="padding:6px;border:1px solid #e2e8f0;">${r.efficacy}</td></tr>`).join('') || '<tr><td colspan="8" style="padding:8px;text-align:center;border:1px solid #e2e8f0;">No trial data</td></tr>'}
           </tbody>
         </table>
       `;
@@ -5353,42 +5944,259 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('p', 'mm', 'a4');
       const now = new Date();
-      doc.setFontSize(16);
-      doc.text(reportTitle, 14, 16);
-      doc.setFontSize(10);
-      doc.text(subtitle, 14, 22);
-      doc.text(`Generated: ${now.toLocaleString()}`, 14, 27);
 
+      // Header
+      doc.setFillColor(5, 150, 105);
+      doc.rect(0, 0, 210, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Miklens Crop Protection', 14, 10);
+      doc.setFontSize(13);
+      doc.text(reportTitle, 14, 18);
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(subtitle, 14, 24);
+      doc.setTextColor(0, 0, 0);
+
+      // Meta info
+      doc.setFontSize(9);
+      doc.text(`Generated: ${now.toLocaleString()}  |  Trials: ${rows.length}`, 14, 33);
+
+      // Main trials table
       doc.autoTable({
-        startY: 32,
-        head: [['Trial', 'Type', 'Location', 'GPS', 'Replications', 'Observations', 'Efficacy %']],
-        body: rows.map(r => [r.trial, r.type, r.location, r.gps, String(r.reps), String(r.obsCount), r.efficacy]),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [5, 150, 105] }
+        startY: 37,
+        head: [['Trial', 'Type', 'Crop / Stage', 'Investigator', 'Location', 'Spray Dates', 'Reps', 'Obs', 'Efficacy %']],
+        body: rows.map(r => [
+          r.trial,
+          r.type,
+          `${r.crop}${r.cropStage && r.cropStage !== '-' ? ' / ' + r.cropStage : ''}`,
+          r.investigator,
+          r.location,
+          r.sprayDates,
+          String(r.reps),
+          String(r.obsCount),
+          r.efficacy
+        ]),
+        styles: { fontSize: 7.5, cellPadding: 2 },
+        headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [240, 253, 244] },
+        columnStyles: { 0: { cellWidth: 30 }, 3: { cellWidth: 22 }, 5: { cellWidth: 28 } }
       });
 
+      let curY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 130;
+
+      // Treatment labels table for each trial
+      rows.forEach(r => {
+        const labels = r.treatmentLabels || {};
+        const labelEntries = Object.entries(labels).filter(([,v]) => v);
+        if (!labelEntries.length) return;
+        if (curY > 250) { doc.addPage(); curY = 14; }
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Treatment Labels — ${r.trial}`, 14, curY);
+        doc.setFont(undefined, 'normal');
+        curY += 4;
+        doc.autoTable({
+          startY: curY,
+          head: [['Treatment', 'Label / Description']],
+          body: labelEntries.map(([k, v]) => [k, v]),
+          styles: { fontSize: 7.5, cellPadding: 2 },
+          headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+          margin: { left: 14, right: 14 }
+        });
+        curY = doc.lastAutoTable.finalY + 6;
+      });
+
+      // Summary statistics
       const stats = computeAggregateStats();
-      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 130;
-      doc.setFontSize(10);
-      doc.text(`Summary Metrics: Avg Efficacy ${stats.avgEfficacy}% | CV ${stats.cv}% (${interpretCV(stats.cv)})`, 14, finalY);
+      if (curY > 260) { doc.addPage(); curY = 14; }
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Summary Statistics', 14, curY);
+      doc.setFont(undefined, 'normal');
+      curY += 5;
+      doc.text(`Avg Efficacy: ${stats.avgEfficacy}%  |  CV: ${stats.cv}% (${interpretCV(stats.cv)})  |  Total Observations: ${state.observations.length}`, 14, curY);
+
       doc.save(`${reportTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
     }
 
-    window.generateFieldVisitReport = () => {
-      const rows = buildReportRows();
-      generatePdfReport('Field Visit Report', 'Daily field operations and geotagged trial status.', rows);
+    window.generateFieldVisitReport = (trialId) => {
+      const rows = buildReportRows(trialId || null);
+      if (!rows.length) { showToast('No trial data available', 'error'); return; }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const now = new Date();
+
+      // Header
+      doc.setFillColor(5, 150, 105);
+      doc.rect(0, 0, 210, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16); doc.setFont(undefined, 'bold');
+      doc.text('Miklens Crop Protection', 14, 10);
+      doc.setFontSize(13);
+      doc.text('Field Visit Report', 14, 18);
+      doc.setFontSize(8); doc.setFont(undefined, 'normal');
+      doc.text('Daily field operations and geotagged trial status', 14, 24);
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${now.toLocaleString()}`, 14, 33);
+
+      let curY = 38;
+
+      rows.forEach((r, idx) => {
+        if (idx > 0) { doc.addPage(); curY = 14; }
+
+        // Trial header block
+        doc.setFontSize(11); doc.setFont(undefined, 'bold');
+        doc.text(`Trial: ${r.trial}`, 14, curY); curY += 6;
+        doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
+        const metaLines = [
+          `Type: ${r.type}   |   Crop: ${r.crop}   |   Crop Stage: ${r.cropStage}`,
+          `Investigator: ${r.investigator}   |   Location: ${r.location}`,
+          `GPS: ${r.gps}   |   Period: ${r.startDate} → ${r.endDate}`,
+          `Spray Dates: ${r.sprayDates}   |   Replications: ${r.reps}`
+        ];
+        metaLines.forEach(line => { doc.text(line, 14, curY); curY += 5; });
+        curY += 2;
+
+        // Treatment labels
+        const labels = r.treatmentLabels || {};
+        const labelEntries = Object.entries(labels).filter(([,v]) => v);
+        if (labelEntries.length) {
+          doc.autoTable({
+            startY: curY,
+            head: [['Treatment', 'Description']],
+            body: labelEntries.map(([k,v]) => [k, v]),
+            styles: { fontSize: 7.5, cellPadding: 2 },
+            headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+            margin: { left: 14, right: 14 }
+          });
+          curY = doc.lastAutoTable.finalY + 6;
+        }
+
+        // Observation records
+        if (r.obsData && r.obsData.length) {
+          doc.setFontSize(9); doc.setFont(undefined, 'bold');
+          doc.text('Field Observations', 14, curY); curY += 4;
+          doc.autoTable({
+            startY: curY,
+            head: [['Date', 'DAA', 'Rep', 'Treatment', 'Damage%', 'Pest Ct', 'Phyto', 'Disease', 'Efficacy', 'Notes']],
+            body: r.obsData.map(o => [
+              o.date || '-',
+              String(o.daa || 0),
+              String(o.replication || 1),
+              o.treatment || '-',
+              String(o.damage || 0),
+              String(o.pest_count || 0),
+              String(o.phyto || 0),
+              String(o.disease_severity || 0),
+              String(o.efficacy_rating || '-'),
+              (o.notes || '-').substring(0, 30)
+            ]),
+            styles: { fontSize: 7, cellPadding: 1.5 },
+            headStyles: { fillColor: [5, 150, 105], textColor: 255 },
+            alternateRowStyles: { fillColor: [240, 253, 244] },
+            margin: { left: 14, right: 14 }
+          });
+          curY = doc.lastAutoTable.finalY + 6;
+        } else {
+          doc.setFontSize(8.5); doc.setFont(undefined, 'italic');
+          doc.text('No observations recorded for this trial.', 14, curY); curY += 6;
+        }
+
+        // Efficacy summary
+        doc.setFontSize(9); doc.setFont(undefined, 'bold');
+        doc.text(`Mean Efficacy: ${r.efficacy}%   Observations: ${r.obsCount}`, 14, curY);
+      });
+
+      doc.save(`Field_Visit_Report_${Date.now()}.pdf`);
       showToast('Field Visit report generated', 'success');
     };
 
-    window.generateTrialSummaryReport = () => {
-      const rows = buildReportRows();
-      generatePdfReport('Trial Summary Report', 'Consolidated trial performance overview.', rows);
+    window.generateTrialSummaryReport = (trialId) => {
+      const rows = buildReportRows(trialId || null);
+      if (!rows.length) { showToast('No trial data available', 'error'); return; }
+      generatePdfReport('Trial Summary Report', 'Consolidated trial performance overview with investigator and spray records.', rows);
       showToast('Trial Summary report generated', 'success');
     };
 
-    window.generateRegulatorySnapshotReport = () => {
-      const rows = buildReportRows();
-      generatePdfReport('Regulatory Snapshot Report', 'Scientific snapshot for review and compliance.', rows);
+    window.generateRegulatorySnapshotReport = (trialId) => {
+      const rows = buildReportRows(trialId || null);
+      if (!rows.length) { showToast('No trial data available', 'error'); return; }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const now = new Date();
+
+      // Header
+      doc.setFillColor(30, 64, 175);
+      doc.rect(0, 0, 210, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16); doc.setFont(undefined, 'bold');
+      doc.text('Miklens Crop Protection', 14, 10);
+      doc.setFontSize(13);
+      doc.text('Regulatory Snapshot Report', 14, 18);
+      doc.setFontSize(8); doc.setFont(undefined, 'normal');
+      doc.text('Scientific snapshot for review and compliance', 14, 24);
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${now.toLocaleString()}  |  Document Reference: MCR-${Date.now()}`, 14, 33);
+
+      // Compliance table
+      doc.autoTable({
+        startY: 38,
+        head: [['Trial', 'Investigator', 'Crop / Stage', 'Location', 'GPS Coordinates', 'Trial Period', 'Spray Programme', 'Reps', 'Total Obs', 'Mean Efficacy%']],
+        body: rows.map(r => [
+          r.trial,
+          r.investigator,
+          `${r.crop} / ${r.cropStage}`,
+          r.location,
+          r.gps,
+          `${r.startDate} → ${r.endDate}`,
+          r.sprayDates,
+          String(r.reps),
+          String(r.obsCount),
+          r.efficacy
+        ]),
+        styles: { fontSize: 7, cellPadding: 1.5 },
+        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [239, 246, 255] },
+        margin: { left: 14, right: 14 }
+      });
+
+      let curY = doc.lastAutoTable.finalY + 8;
+
+      // Treatment schedule section
+      rows.forEach(r => {
+        const labels = r.treatmentLabels || {};
+        const labelEntries = Object.entries(labels).filter(([,v]) => v);
+        if (!labelEntries.length) return;
+        if (curY > 240) { doc.addPage(); curY = 14; }
+        doc.setFontSize(9); doc.setFont(undefined, 'bold');
+        doc.text(`Treatment Schedule — ${r.trial}  (Investigator: ${r.investigator})`, 14, curY);
+        curY += 4;
+        doc.autoTable({
+          startY: curY,
+          head: [['Code', 'Treatment / Dosage Description', 'Spray Dates', 'Formulation']],
+          body: labelEntries.map(([k, v]) => [k, v, r.sprayDates, r.formulation]),
+          styles: { fontSize: 7.5, cellPadding: 1.5 },
+          headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+          margin: { left: 14, right: 14 }
+        });
+        curY = doc.lastAutoTable.finalY + 6;
+      });
+
+      // Regulatory footer
+      if (curY > 260) { doc.addPage(); curY = 14; }
+      doc.setFontSize(8); doc.setFont(undefined, 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text('This document is generated for regulatory review purposes. All data is sourced from verified field records.', 14, curY);
+      curY += 5;
+      doc.text(`Prepared by Miklens Crop Protection Suite. Reference: MCR-${Date.now()}.`, 14, curY);
+
+      doc.save(`Regulatory_Snapshot_${Date.now()}.pdf`);
       showToast('Regulatory Snapshot report generated', 'success');
     };
 
@@ -6134,6 +6942,15 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         notes: $('obsNotes').value,
         image_url: $('obsImage').value || '',
         image_type: $('obsImageType').value || '',
+        crop_photo: ($('obsCropPhoto') ? $('obsCropPhoto').value.trim() : ''),
+        rotation: ($('obsRotation') ? $('obsRotation').value.trim() : ''),
+        microscopic_data: ($('obsImageType') && $('obsImageType').value === 'microscopic') ? JSON.stringify({
+          magnification: $('obsMagnification') ? $('obsMagnification').value : '',
+          slide_id: $('obsSlideId') ? $('obsSlideId').value.trim() : '',
+          stain_type: $('obsStainType') ? $('obsStainType').value.trim() : '',
+          microscope_type: $('obsMicroscopeType') ? $('obsMicroscopeType').value : '',
+          notes: $('obsMicroscopicNotes') ? $('obsMicroscopicNotes').value.trim() : ''
+        }) : '',
         dynamic_json: JSON.stringify(collectDynamicObservationFields()),
         created_at: existingObs ? (existingObs.created_at || new Date().toISOString()) : new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -6355,6 +7172,33 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       if ($('obsTrial')) {
         $('obsTrial').addEventListener('change', function() {
           renderDynamicObservationFields();
+          // Populate treatment dropdown with custom labels from selected trial
+          const trialId = this.value;
+          const trial = state.trials.find(t => String(t.id) === String(trialId));
+          const sel = $('obsTreatment');
+          const hint = $('obsTreatmentHint');
+          if (trial && trial.treatment_labels) {
+            const lbl = trial.treatment_labels;
+            sel.innerHTML = `
+              <option value="Control">${lbl.Control || 'Control (Untreated)'}</option>
+              ${lbl.T1 ? `<option value="T1">T1: ${lbl.T1}</option>` : '<option value="T1">T1</option>'}
+              ${lbl.T2 ? `<option value="T2">T2: ${lbl.T2}</option>` : '<option value="T2">T2</option>'}
+              ${lbl.T3 ? `<option value="T3">T3: ${lbl.T3}</option>` : '<option value="T3">T3</option>'}
+              ${lbl.T4 ? `<option value="T4">T4: ${lbl.T4}</option>` : '<option value="T4">T4</option>'}
+              ${lbl.T5 ? `<option value="T5">T5: ${lbl.T5}</option>` : '<option value="T5">T5</option>'}
+            `;
+            if (hint) hint.textContent = 'Labels loaded from selected trial.';
+          } else {
+            sel.innerHTML = `
+              <option value="Control">Control (Untreated)</option>
+              <option value="T1">T1</option>
+              <option value="T2">T2</option>
+              <option value="T3">T3</option>
+              <option value="T4">T4</option>
+              <option value="T5">T5</option>
+            `;
+            if (hint) hint.textContent = trialId ? 'No custom labels set for this trial. Edit the trial to add them.' : 'Select a trial above to see custom treatment labels.';
+          }
         });
       }
 
@@ -6364,6 +7208,39 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       if ($('btnGenerateTemplatePreview')) {
         $('btnGenerateTemplatePreview').onclick = window.generateTemplatePreview;
       }
+
+      // Harvest save handler
+      if ($('btnSaveHarvest')) {
+        $('btnSaveHarvest').onclick = function() {
+          const trialId = $('harvTrial').value;
+          const date = $('harvDate').value;
+          if (!trialId || !date) { showToast('Trial and Harvest Date are required', 'error'); return; }
+          const record = {
+            id: 'harv_' + Date.now(),
+            trial_id: trialId,
+            date: date,
+            crop: $('harvCrop').value.trim(),
+            yield: safeParseNum($('harvYield').value),
+            yield_unit: $('harvYieldUnit').value,
+            grade: $('harvGrade').value,
+            moisture: safeParseNum($('harvMoisture').value),
+            grain_weight: safeParseNum($('harvGrainWeight').value),
+            plot_size: safeParseNum($('harvPlotSize').value),
+            notes: $('harvNotes').value.trim(),
+            created_at: new Date().toISOString()
+          };
+          state.harvestRecords.push(record);
+          localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
+          renderHarvestTable();
+          // Reset form
+          ['harvDate','harvCrop','harvYield','harvGrainWeight','harvPlotSize','harvMoisture','harvNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
+          $('harvGrade').value = '';
+          showToast('Harvest record saved', 'success');
+        };
+      }
+
+      // Initial harvest render
+      renderHarvestTable();
 
       $('btnSaveUrl').onclick = async () => {
         state.scriptUrl = normalizeScriptUrl($('scriptUrl').value);
