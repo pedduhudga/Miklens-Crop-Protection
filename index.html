@@ -1886,7 +1886,14 @@
                 <canvas id="scatterChart" style="max-height:260px;"></canvas>
               </div>
               <div>
-                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Weather vs Efficacy Regression</h4>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+                  <h4 style="margin:0;color:var(--text-light);font-size:0.86rem;">Weather vs Efficacy Regression</h4>
+                  <select id="weatherVarSelector" onchange="renderWeatherRegressionChart()" style="font-size:0.82rem;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-main);cursor:pointer;">
+                    <option value="temp">🌡️ Temperature</option>
+                    <option value="humidity">💧 Humidity</option>
+                    <option value="wind">💨 Wind Speed</option>
+                  </select>
+                </div>
                 <canvas id="weatherRegressionChart" style="max-height:260px;"></canvas>
               </div>
             </div>
@@ -1901,6 +1908,14 @@
               </div>
               <div id="pcaSummary"></div>
             </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+              <h3 style="margin:0;">Box Plot — Treatment Distribution</h3>
+              <span style="font-size:0.8rem;color:var(--text-light);">◆ mean &nbsp;|&nbsp; boxes = Q1–Q3 &nbsp;|&nbsp; whiskers = 1.5×IQR &nbsp;|&nbsp; ● outliers</span>
+            </div>
+            <canvas id="boxPlotChart" width="900" height="320" style="width:100%;max-height:320px;border-radius:8px;"></canvas>
           </div>
 
           <div class="card">
@@ -3346,6 +3361,7 @@
         microscopic_note: 'obsMicroscopic',
         field_temp: 'obsFieldTemp',
         field_humidity: 'obsFieldHumidity',
+        wind_speed: 'obsWindSpeed',
         soil_moisture: 'obsSoilMoisture',
         climate_control: 'obsClimateControl',
         greenhouse_temp: 'obsGreenhouseTemp',
@@ -3429,6 +3445,7 @@
       if (ctx.trialType === 'Field' || ctx.trialType === 'On-farm' || ctx.trialType === 'Micro-plot') {
         trialBits.push('<div class="form-group"><label>Field Temp (deg C)</label><input type="number" id="obsFieldTemp" step="0.1" placeholder="28"></div>');
         trialBits.push('<div class="form-group"><label>Field Humidity (%)</label><input type="number" id="obsFieldHumidity" min="0" max="100" placeholder="65"></div>');
+        trialBits.push('<div class="form-group"><label>Wind Speed (km/h)</label><input type="number" id="obsWindSpeed" min="0" step="0.1" placeholder="12"></div>');
         trialBits.push('<div class="form-group"><label>Soil Moisture Status</label><select id="obsSoilMoisture"><option value="">Select</option><option value="Dry">Dry</option><option value="Normal">Normal</option><option value="Wet">Wet</option></select></div>');
       }
       if (ctx.trialType === 'Greenhouse') {
@@ -3471,6 +3488,7 @@
         microscopic_note: read('obsMicroscopic'),
         field_temp: read('obsFieldTemp'),
         field_humidity: read('obsFieldHumidity'),
+        wind_speed: read('obsWindSpeed'),
         soil_moisture: read('obsSoilMoisture'),
         climate_control: read('obsClimateControl'),
         greenhouse_temp: read('obsGreenhouseTemp'),
@@ -3738,43 +3756,83 @@
       const controlObs = controlTrialId ? state.observations.filter(function(o) { return String(o.trial_id) === controlTrialId; }) : [];
       const meanControlDamage = controlObs.length ? controlObs.reduce(function(s, o) { return s + (safeParseNum(o.damage) || 0); }, 0) / controlObs.length : null;
 
-      el.innerHTML = state.trials.map(function(trial) {
+      // Abbott's Formula: Control mortality validation
+      // Control mortality = % of insects dead in untreated check
+      // Abbott's assumes control mortality < 15% — warn if exceeded
+      const controlMortalityForValidation = meanControlDamage !== null ? (100 - meanControlDamage) : null;
+      let abbottWarning = '';
+      if (controlMortalityForValidation !== null) {
+        if (controlMortalityForValidation > 15) {
+          abbottWarning = `<div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;background:rgba(249,115,22,0.1);border-left:4px solid var(--warning);">
+            ⚠️ <strong>Control Mortality Warning:</strong> Natural mortality in control = <strong>${controlMortalityForValidation.toFixed(1)}%</strong>
+            (threshold: ≤15%). Abbott's correction is applied automatically but results should be interpreted cautiously above 15%.
+            <br><small style="color:var(--text-light);">Abbott's Formula: Corrected Efficacy = (T - C) / (100 - C) × 100</small>
+          </div>`;
+        } else {
+          abbottWarning = `<div style="padding:8px 14px;border-radius:8px;margin-bottom:12px;background:rgba(16,185,129,0.08);border-left:4px solid var(--success);">
+            ✅ <strong>Control Mortality:</strong> ${controlMortalityForValidation.toFixed(1)}% (within valid range ≤15%). Abbott's correction is reliable.
+          </div>`;
+        }
+      }
+
+      const cards = state.trials.map(function(trial) {
         const trialObs = state.observations.filter(function(o) { return String(o.trial_id) === String(trial.id); });
         if (!trialObs.length) return '';
         const formulation = state.formulations.find(function(f) { return String(f.id) === String(trial.formulation_id); });
         const type = formulation ? formulation.type : 'Unknown';
         const meanDamage = trialObs.reduce(function(s, o) { return s + (safeParseNum(o.damage) || 0); }, 0) / trialObs.length;
-        let formula = '', efficacyVal = null, unit = '%';
+        let formula = '', efficacyVal = null, unit = '%', formulaDetail = '';
 
         if (type === 'Pesticide' && meanControlDamage !== null) {
           formula = "Abbott's Formula";
-          const treatmentMortality = 100 - meanDamage;
-          const controlMortality = 100 - meanControlDamage;
-          efficacyVal = abbottEfficacy(treatmentMortality, controlMortality);
+          const T = 100 - meanDamage;                     // % kill in treated
+          const C = 100 - meanControlDamage;              // % natural kill in control
+          efficacyVal = abbottEfficacy(T, C);
+          formulaDetail = `T=${T.toFixed(1)}%, C=${C.toFixed(1)}% → (T−C)/(100−C)×100`;
         } else if (type === 'Fungicide') {
           formula = 'Disease Severity Index (DSI)';
           const meanDSI = trialObs.reduce(function(s, o) { return s + parseFloat(diseaseSeverityIndex(o)); }, 0) / trialObs.length;
           efficacyVal = (100 - meanDSI);
           unit = '% DSI-corrected';
+          formulaDetail = `DSI = (score/9)×100 = ${meanDSI.toFixed(1)}, Efficacy = 100 − DSI`;
         } else if (type === 'Biofertilizer') {
           formula = 'Yield/Efficacy Index';
           efficacyVal = formulation ? (safeParseNum(formulation.nitrogen_contribution) || null) : null;
           unit = '% N contribution';
+          formulaDetail = 'Based on nitrogen contribution field';
         } else {
-          formula = 'Raw Efficacy (100 - damage%)';
+          formula = 'Raw Efficacy (100 − damage%)';
           efficacyVal = 100 - meanDamage;
+          formulaDetail = `Mean cover damage = ${meanDamage.toFixed(1)}%`;
         }
 
-        const eff = efficacyVal !== null ? parseFloat(efficacyVal).toFixed(1) : 'N/A (set control trial)';
-        const color = efficacyVal !== null ? (efficacyVal >= 70 ? 'var(--success)' : (efficacyVal >= 40 ? 'var(--warning)' : 'var(--danger)')) : 'var(--text-light)';
-        return `<div class="efficacy-formula-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div><strong>${trial.name}</strong> <span class="badge badge-primary" style="font-size:0.75rem;">${type}</span></div>
-            <div style="text-align:right;"><div style="font-size:1.3rem;font-weight:700;color:${color};">${eff}${efficacyVal !== null ? unit : ''}</div><div style="font-size:0.75rem;color:var(--text-light);">${formula}</div></div>
+        const eff = efficacyVal !== null ? parseFloat(efficacyVal).toFixed(1) : null;
+        const grade = eff !== null ? efficacyLetter(parseFloat(eff)) : null;
+        const color = eff !== null ? (parseFloat(eff) >= 70 ? 'var(--success)' : (parseFloat(eff) >= 40 ? 'var(--warning)' : 'var(--danger)')) : 'var(--text-light)';
+        const displayEff = eff !== null ? `${eff}${unit}` : 'N/A (select control trial)';
+
+        return `<div class="efficacy-formula-card" style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;font-size:1rem;">${trial.name}</div>
+              <span class="badge badge-primary" style="font-size:0.75rem;">${type}</span>
+              <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">${formulaDetail}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:1.6rem;font-weight:700;color:${color};">${displayEff}</div>
+              ${grade ? `<span class="rating-badge rating-${grade.toLowerCase()}">${grade}</span>` : ''}
+              <div style="font-size:0.73rem;color:var(--text-light);">${formula}</div>
+            </div>
           </div>
-          <div style="font-size:0.82rem;color:var(--text-light);margin-top:4px;">N=${trialObs.length} observations · Mean cover=${meanDamage.toFixed(1)}%${meanControlDamage !== null ? ` · Control=${meanControlDamage.toFixed(1)}%` : ''}</div>
+          <div style="font-size:0.82rem;color:var(--text-light);margin-top:6px;display:flex;gap:16px;flex-wrap:wrap;">
+            <span>N=${trialObs.length} obs</span>
+            <span>Mean cover=${meanDamage.toFixed(1)}%</span>
+            ${meanControlDamage !== null ? `<span>Control=${meanControlDamage.toFixed(1)}%</span>` : ''}
+          </div>
         </div>`;
-      }).join('') || '<p style="color:var(--text-light);">No observations recorded yet.</p>';
+      }).join('');
+
+      el.innerHTML = (abbottWarning + cards) || '<p style="color:var(--text-light);">No observations recorded yet.</p>';
     }
 
     // ===== TUKEY HSD + CI + EFFECT SIZE =====
@@ -4587,6 +4645,66 @@
     }
 
     // ===== STATISTICAL ANALYSIS =====
+
+    // --- Accurate F-distribution p-value via regularized incomplete beta ---
+    function betaIncomplete(x, a, b) {
+      // Lentz continued fraction (Numerical Recipes 6.4)
+      const TINY = 1e-300, MAXIT = 200, EPS = 3e-7;
+      const lnBeta = (p, q) => {
+        const lgamma = v => {
+          if (v <= 0) return 0;
+          const cof = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+          let y = v, x2 = v, tmp = v + 5.5;
+          tmp -= (v + 0.5) * Math.log(tmp);
+          let ser = 1.000000000190015;
+          cof.forEach((c, j) => { y++; ser += c / y; });
+          return -tmp + Math.log(2.5066282746310005 * ser / x2);
+        };
+        return lgamma(p) + lgamma(q) - lgamma(p + q);
+      };
+      if (x < 0 || x > 1) return NaN;
+      if (x === 0 || x === 1) return x;
+      const logBeta = lnBeta(a, b);
+      const bt = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - logBeta);
+      const contFrac = (aa, bb, xx) => {
+        let m = 1, qab = aa + bb, qap = aa + 1, qam = aa - 1, c = 1, d = 1 - qab * xx / qap;
+        if (Math.abs(d) < TINY) d = TINY;
+        d = 1 / d; let h = d;
+        for (let mi = 1; mi <= MAXIT; mi++) {
+          let aa2 = mi * (bb - mi) * xx / ((qam + 2 * mi) * (aa + 2 * mi));
+          d = 1 + aa2 * d; if (Math.abs(d) < TINY) d = TINY;
+          c = 1 + aa2 / c; if (Math.abs(c) < TINY) c = TINY;
+          d = 1 / d; h *= d * c;
+          aa2 = -(aa + mi) * (qab + mi) * xx / ((aa + 2 * mi) * (qap + 2 * mi));
+          d = 1 + aa2 * d; if (Math.abs(d) < TINY) d = TINY;
+          c = 1 + aa2 / c; if (Math.abs(c) < TINY) c = TINY;
+          d = 1 / d; const del = d * c; h *= del;
+          if (Math.abs(del - 1) < EPS) break;
+        }
+        return h;
+      };
+      const ibeta_cf = (aa, bb, xx) => bt * contFrac(aa, bb, xx) / aa;
+      if (x < (a + 1) / (a + b + 2)) return ibeta_cf(a, b, x);
+      return 1 - ibeta_cf(b, a, 1 - x);
+    }
+
+    // Proper p-value for F(d1,d2)
+    function fDistPValue(F, d1, d2) {
+      if (!F || F <= 0 || !d1 || !d2) return 1;
+      const x = d2 / (d2 + d1 * F);
+      const p = betaIncomplete(x, d2 / 2, d1 / 2);
+      return Math.max(0, Math.min(1, p));
+    }
+
+    // Significance stars
+    function sigStars(p) {
+      if (p < 0.001) return '***';
+      if (p < 0.01)  return '**';
+      if (p < 0.05)  return '*';
+      if (p < 0.10)  return '.';
+      return 'ns';
+    }
+
     function computeGroupStats(observations) {
       if (!observations.length) return { mean: 0, sd: 0, cv:0, n: 0 };
       const vals = observations.map(o => safeParseNum(o.damage)).filter(v => v !== null);
@@ -4634,8 +4752,7 @@
       const msBetween = ssBetween / dfBetween;
       const msWithin = ssWithin / dfWithin;
       const fValue = msWithin === 0 ? 0 : msBetween / msWithin;
-      const approxP = Math.exp(-0.5 * fValue * Math.max(1, dfBetween));
-      const pValue = Number.isFinite(approxP) ? Math.max(0, Math.min(1, approxP)) : 1;
+      const pValue = fDistPValue(fValue, dfBetween, dfWithin);
 
       return {
         groups: groups.length,
@@ -4648,7 +4765,8 @@
         msBetween: msBetween.toFixed(3),
         msWithin: msWithin.toFixed(3),
         pValue: pValue.toFixed(4),
-        significant: pValue < 0.05
+        significant: pValue < 0.05,
+        stars: sigStars(pValue)
       };
     }
 
@@ -4686,13 +4804,27 @@
 
     function computeDataQualityReport() {
       const total = state.observations.length;
-      if (!total) return { score: 0, label: 'No Data', completenessPct: 0, rangePct: 0, outlierPct: 0, consistencyPct: 0, issues: [] };
+      if (!total) return { score: 0, label: 'No Data', completenessPct: 0, rangePct: 0, outlierPct: 0, consistencyPct: 0, duplicateCount: 0, issues: [] };
 
       let completeCount = 0;
       let rangeValidCount = 0;
       let consistencyHits = 0;
       const issues = [];
       const damageVals = [];
+
+      // --- Duplicate Detection ---
+      // A duplicate = same trial_id + treatment + date + replication + damage
+      const seen = new Map();
+      let duplicateCount = 0;
+      state.observations.forEach(function(obs) {
+        const key = [obs.trial_id, obs.treatment, obs.date, obs.replication, obs.damage].join('|');
+        if (seen.has(key)) {
+          duplicateCount++;
+          issues.push(`⚠️ Duplicate detected: trial ${obs.trial_id} / ${obs.treatment} / ${obs.date} / rep ${obs.replication}`);
+        } else {
+          seen.set(key, true);
+        }
+      });
 
       state.observations.forEach(function(obs) {
         const requiredOk = !!(obs.trial_id && obs.date && obs.treatment !== undefined && obs.damage !== undefined && obs.phyto !== undefined && obs.disease_severity !== undefined);
@@ -4722,7 +4854,8 @@
       const rangePct = (rangeValidCount / total) * 100;
       const outlierPct = total ? ((total - outlierReport.outliers.length) / total) * 100 : 0;
       const consistencyPct = (consistencyHits / total) * 100;
-      const score = (0.3 * completenessPct) + (0.3 * rangePct) + (0.2 * outlierPct) + (0.2 * consistencyPct);
+      const dupPenalty = Math.min(20, duplicateCount * 5); // penalize up to -20 for duplicates
+      const score = Math.max(0, (0.25 * completenessPct) + (0.25 * rangePct) + (0.2 * outlierPct) + (0.2 * consistencyPct) + (0.1 * (total > 0 ? 100 : 0)) - dupPenalty);
       const label = score >= 90 ? 'Excellent' : (score >= 75 ? 'Good' : (score >= 60 ? 'Fair' : 'Poor'));
       return {
         score: score.toFixed(1),
@@ -4732,8 +4865,10 @@
         outlierPct: outlierPct.toFixed(1),
         consistencyPct: consistencyPct.toFixed(1),
         outlierCount: outlierReport.outliers.length,
+        outlierValues: outlierReport.outliers,
+        duplicateCount,
         iqr: outlierReport,
-        issues: issues.slice(0, 6)
+        issues: issues.slice(0, 10)
       };
     }
 
@@ -4745,20 +4880,53 @@
         el.innerHTML = '<p style="color:var(--text-light);">No observations available for data quality scoring.</p>';
         return;
       }
-      const chipColor = report.score >= 90 ? 'rgba(16,185,129,0.2);color:#15803d;' : (report.score >= 75 ? 'rgba(59,130,246,0.2);color:#1d4ed8;' : (report.score >= 60 ? 'rgba(249,115,22,0.2);color:#c2410c;' : 'rgba(220,38,38,0.2);color:#b91c1c;'));
+      const score = parseFloat(report.score);
+      const scoreColor = score >= 90 ? '#15803d' : (score >= 75 ? '#1d4ed8' : (score >= 60 ? '#c2410c' : '#b91c1c'));
+      const barBg = score >= 90 ? '#10b981' : (score >= 75 ? '#3b82f6' : (score >= 60 ? '#f97316' : '#ef4444'));
+
       el.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-          <div><strong>Quality Score:</strong> ${report.score}/100</div>
-          <span class="quality-chip" style="${chipColor}">${report.label}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:2rem;font-weight:800;color:${scoreColor};line-height:1;">${report.score}<span style="font-size:1rem;font-weight:400;">/100</span></div>
+            <div style="font-size:0.8rem;color:var(--text-light);">Data Quality Score</div>
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <div style="background:#e2e8f0;border-radius:20px;height:14px;overflow:hidden;">
+              <div style="width:${report.score}%;height:100%;background:${barBg};border-radius:20px;transition:width 0.5s;"></div>
+            </div>
+            <div style="text-align:right;font-size:0.8rem;margin-top:3px;font-weight:600;color:${scoreColor};">${report.label}</div>
+          </div>
         </div>
-        <div class="form-grid" style="margin-bottom:8px;">
-          <div>Completeness: <strong>${report.completenessPct}%</strong></div>
-          <div>Range Validity: <strong>${report.rangePct}%</strong></div>
-          <div>Outlier-Free: <strong>${report.outlierPct}%</strong> (Outliers: ${report.outlierCount})</div>
-          <div>Logical Consistency: <strong>${report.consistencyPct}%</strong></div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+          <div style="padding:10px;background:rgba(5,150,105,0.06);border-radius:8px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--primary);">${report.completenessPct}%</div>
+            <div style="font-size:0.77rem;color:var(--text-light);">Completeness</div>
+          </div>
+          <div style="padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#2563eb;">${report.rangePct}%</div>
+            <div style="font-size:0.77rem;color:var(--text-light);">Range Validity</div>
+          </div>
+          <div style="padding:10px;background:rgba(249,115,22,0.06);border-radius:8px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#c2410c;">${report.outlierPct}%</div>
+            <div style="font-size:0.77rem;color:var(--text-light);">Outlier-Free (${report.outlierCount} detected)</div>
+          </div>
+          <div style="padding:10px;background:rgba(139,92,246,0.06);border-radius:8px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#7c3aed;">${report.consistencyPct}%</div>
+            <div style="font-size:0.77rem;color:var(--text-light);">Logical Consistency</div>
+          </div>
+          <div style="padding:10px;background:${report.duplicateCount > 0 ? 'rgba(220,38,38,0.06)' : 'rgba(16,185,129,0.06)'};border-radius:8px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:${report.duplicateCount > 0 ? 'var(--danger)' : 'var(--success)'};">${report.duplicateCount}</div>
+            <div style="font-size:0.77rem;color:var(--text-light);">Duplicates Detected</div>
+          </div>
         </div>
-        <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:6px;">IQR bounds on cover%: ${report.iqr.lower !== null ? report.iqr.lower.toFixed(2) : '-'} to ${report.iqr.upper !== null ? report.iqr.upper.toFixed(2) : '-'}.</div>
-        ${report.issues.length ? `<ul style="margin:6px 0 0;padding-left:18px;color:var(--danger);font-size:0.85rem;">${report.issues.map(function(x){ return '<li>' + x + '</li>'; }).join('')}</ul>` : '<div style="color:var(--success);font-size:0.86rem;">No major logical inconsistencies detected.</div>'}
+
+        ${report.outlierCount > 0 ? `<div style="padding:8px 12px;background:rgba(249,115,22,0.08);border-radius:6px;font-size:0.82rem;margin-bottom:8px;">
+          <strong>🔍 Outlier Values (IQR method):</strong> ${report.outlierValues.map(v => v.toFixed(1)).join(', ')}%
+          <br><small style="color:var(--text-light);">IQR bounds: ${report.iqr.lower !== null ? report.iqr.lower.toFixed(1) : '-'} – ${report.iqr.upper !== null ? report.iqr.upper.toFixed(1) : '-'}%</small>
+        </div>` : ''}
+
+        ${report.issues.length ? `<div style="margin-top:4px;"><div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;color:var(--danger);">Issues Found:</div><ul style="margin:0;padding-left:18px;color:var(--danger);font-size:0.83rem;line-height:1.7;">${report.issues.map(x => '<li>' + x + '</li>').join('')}</ul></div>` : '<div style="padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:6px;font-size:0.86rem;color:var(--success);">✅ No major logical inconsistencies or duplicates detected.</div>'}
       `;
     }
 
@@ -5409,35 +5577,51 @@
 
       const anova = computeANOVA();
       if (anova) {
+        const sigColor = anova.significant ? 'var(--success)' : 'var(--warning)';
+        const sigText = anova.significant
+          ? `✅ SIGNIFICANT — treatments differ (p < 0.05)`
+          : `⚠️ Not significant — no detected difference between treatments`;
         $('anovaContent').innerHTML = `
-          <table style="width: 100%; border-collapse: collapse;">
+          <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;background:${anova.significant ? 'rgba(16,185,129,0.08)' : 'rgba(249,115,22,0.08)'};border-left:4px solid ${sigColor};">
+            <strong style="color:${sigColor};font-size:1rem;">${sigText}</strong><br>
+            <span style="font-size:0.82rem;color:var(--text-light);">F(${anova.dfBetween},${anova.dfWithin}) = ${anova.fValue}, p = ${anova.pValue} ${anova.stars}</span>
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width: 100%; border-collapse: collapse;font-size:0.9rem;">
             <thead><tr style="background: rgba(5,150,105,0.1);">
-              <th style="text-align: left; padding: 8px;">Source</th>
-              <th style="padding: 8px;">SS</th>
-              <th style="padding: 8px;">df</th>
-              <th style="padding: 8px;">MS</th>
-              <th style="padding: 8px;">F-value</th>
-              <th style="padding: 8px;">p-value</th>
+              <th style="text-align: left; padding: 10px 12px;border-bottom:2px solid var(--primary-light);">Source</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">SS</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">df</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">MS</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">F-value</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">p-value</th>
+              <th style="padding: 10px 12px;border-bottom:2px solid var(--primary-light);">Sig.</th>
             </tr></thead>
             <tbody>
               <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 8px;"><strong>Between Groups</strong></td>
-                <td style="padding: 8px; text-align: center;">${anova.ssBetween}</td>
-                <td style="padding: 8px; text-align: center;">${anova.dfBetween}</td>
-                <td style="padding: 8px; text-align: center;">${anova.msBetween}</td>
-                <td style="padding: 8px; text-align: center;"><strong>${anova.fValue}</strong></td>
-                <td style="padding: 8px; text-align: center;">${anova.pValue} (${anova.significant ? 'Significant' : 'Not significant'})</td>
+                <td style="padding: 10px 12px;"><strong>Between Groups</strong></td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.ssBetween}</td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.dfBetween}</td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.msBetween}</td>
+                <td style="padding: 10px 12px; text-align: center;"><strong>${anova.fValue}</strong></td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.pValue}</td>
+                <td style="padding: 10px 12px; text-align: center;font-weight:700;color:${sigColor};">${anova.stars}</td>
               </tr>
               <tr>
-                <td style="padding: 8px;"><strong>Within Groups</strong></td>
-                <td style="padding: 8px; text-align: center;">${anova.ssWithin}</td>
-                <td style="padding: 8px; text-align: center;">${anova.dfWithin}</td>
-                <td style="padding: 8px; text-align: center;">${anova.msWithin}</td>
-                <td colspan="2" style="padding: 8px; text-align: center;"><em>Error term</em></td>
+                <td style="padding: 10px 12px;"><strong>Within Groups (Error)</strong></td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.ssWithin}</td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.dfWithin}</td>
+                <td style="padding: 10px 12px; text-align: center;">${anova.msWithin}</td>
+                <td colspan="3" style="padding: 10px 12px; text-align: center;color:var(--text-light);"><em>Error term</em></td>
               </tr>
             </tbody>
           </table>
-          <p style="margin-top:8px;color:var(--text-light);font-size:0.84rem;">Groups: ${anova.groups}, Total N: ${anova.totalN}. ANOVA evaluates treatment groups by cover%.</p>
+          </div>
+          <div style="margin-top:10px;padding:8px 12px;background:rgba(248,250,252,0.8);border-radius:6px;font-size:0.82rem;color:var(--text-light);">
+            <strong>Groups:</strong> ${anova.groups} | <strong>Total N:</strong> ${anova.totalN} | 
+            Significance codes: *** p&lt;0.001  ** p&lt;0.01  * p&lt;0.05  . p&lt;0.10  ns not significant<br>
+            <em>Analysis performed on % cover damage (lower = better efficacy). Follow-up with Tukey HSD below.</em>
+          </div>
         `;
       }
 
@@ -5545,6 +5729,7 @@
       renderScatterChart();
       renderWeatherRegressionChart();
       renderPcaChart();
+      renderBoxPlotChart();
     }
 
     function renderDayWiseChart() {
@@ -5588,20 +5773,95 @@
     function renderDoseResponseChart() {
       const ctx = $('doseResponseChart');
       if (!ctx || !window.Chart) return;
+
+      // --- Try 4-parameter logistic (sigmoidal) fit first ---
       const analysis = computeDoseResponseAnalytics();
       const points = analysis.points || [];
-      const lineData = analysis.curve || [];
-      const lc50 = (function() {
+
+      // 4PL: y = d + (a - d) / (1 + (x/c)^b)
+      // a=min response, d=max response (100 at dose=0 for pests), b=Hill slope, c=EC50/LC50
+      function fourPL(x, a, b, c, d) {
+        return d + (a - d) / (1 + Math.pow(x / Math.max(c, 0.001), b));
+      }
+
+      function fit4PL(pts) {
+        if (pts.length < 4) return null;
+        // Estimate initial params from data
+        const xs = pts.map(p => p.x);
+        const ys = pts.map(p => p.y);
+        const maxY = Math.max(...ys);
+        const minY = Math.min(...ys);
+        let bestA = minY, bestB = 1.5, bestC = (Math.max(...xs) + Math.min(...xs)) / 2, bestD = maxY;
+        let bestSS = Infinity;
+
+        const sse = (a, b, c, d) => pts.reduce((s, p) => {
+          const res = fourPL(p.x, a, b, c, d) - p.y;
+          return s + res * res;
+        }, 0);
+
+        // Grid search over Hill slope and LC50 candidates
+        const slopes = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0];
+        const ec50cands = [10, 25, 40, 50, 60, 75, 90, 100, 120];
+        ec50cands.forEach(c => {
+          slopes.forEach(b => {
+            const ss = sse(minY, b, c, maxY);
+            if (ss < bestSS) { bestSS = ss; bestA = minY; bestB = b; bestC = c; bestD = maxY; }
+          });
+        });
+
+        // Simple gradient-descent refinement (50 steps)
+        const lr = 0.2;
+        for (let iter = 0; iter < 80; iter++) {
+          let gA = 0, gB = 0, gC = 0, gD = 0;
+          pts.forEach(p => {
+            const pred = fourPL(p.x, bestA, bestB, bestC, bestD);
+            const err = pred - p.y;
+            const ratio = p.x / Math.max(bestC, 0.001);
+            const pow = Math.pow(ratio, bestB);
+            const denom = 1 + pow;
+            gD += err * (1);
+            gA += err * (1 / denom);
+            gC += err * (-((bestA - bestD) * bestB * pow) / (bestC * denom * denom));
+            gB += err * (-((bestA - bestD) * Math.log(ratio || 1) * pow) / (denom * denom));
+          });
+          const n = pts.length;
+          bestA -= lr * gA / n;
+          bestB -= lr * gB / n;
+          bestC = Math.max(1, bestC - lr * gC / n);
+          bestD -= lr * gD / n;
+          bestB = Math.max(0.1, Math.min(10, bestB));
+          bestA = Math.max(0, Math.min(100, bestA));
+          bestD = Math.max(0, Math.min(100, bestD));
+        }
+
+        const sst = (() => {
+          const my = ys.reduce((a,b) => a+b, 0) / ys.length;
+          return ys.reduce((s, y) => s + Math.pow(y - my, 2), 0);
+        })();
+        const r2 = sst > 0 ? Math.max(0, 1 - sse(bestA, bestB, bestC, bestD) / sst) : 0;
+        return { a: bestA, b: bestB, c: bestC, d: bestD, r2, ec50: bestC };
+      }
+
+      const params4PL = fit4PL(points);
+      const lc50 = params4PL ? params4PL.ec50 : (function() {
+        const lineData = analysis.curve || [];
         for (let i = 1; i < lineData.length; i++) {
-          const p1 = lineData[i - 1];
-          const p2 = lineData[i];
+          const p1 = lineData[i - 1], p2 = lineData[i];
           if ((p1.y <= 50 && p2.y >= 50) || (p1.y >= 50 && p2.y <= 50)) {
-            const ratio = (50 - p1.y) / (p2.y - p1.y || 1);
-            return p1.x + ratio * (p2.x - p1.x);
+            return p1.x + (50 - p1.y) / ((p2.y - p1.y) || 1) * (p2.x - p1.x);
           }
         }
         return null;
       })();
+
+      const xMax = Math.max(130, ...points.map(p => p.x));
+      const xMin = 0;
+      const sigmoidCurve = params4PL
+        ? Array.from({ length: 60 }, (_, i) => {
+            const x = xMin + (xMax - xMin) * i / 59;
+            return { x, y: Math.max(0, Math.min(100, fourPL(x, params4PL.a, params4PL.b, params4PL.c, params4PL.d))) };
+          })
+        : (analysis.curve || []);
 
       if (state.charts.dose) state.charts.dose.destroy();
       state.charts.dose = new Chart(ctx, {
@@ -5612,48 +5872,74 @@
             data: points,
             parsing: false,
             borderColor: '#0891b2',
-            backgroundColor: 'rgba(8,145,178,0.2)',
+            backgroundColor: 'rgba(8,145,178,0.3)',
             showLine: false,
-            pointRadius: 5
+            pointRadius: 6,
+            pointHoverRadius: 8
           }, {
-            label: 'Fitted Curve',
-            data: lineData,
+            label: params4PL ? `4PL Sigmoid (R²=${params4PL.r2.toFixed(3)})` : 'Fitted Curve',
+            data: sigmoidCurve,
             parsing: false,
             borderColor: '#059669',
             backgroundColor: 'rgba(5,150,105,0.1)',
-            tension: 0.35,
+            tension: 0.4,
             pointRadius: 0,
-            borderWidth: 2
+            borderWidth: 2.5,
+            fill: true
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { type: 'linear', min: 0, max: Math.max(130, ...points.map(function(p) { return p.x; }), 130), title: { display: true, text: 'Dosage / label numeric value' } },
+            x: { type: 'linear', min: xMin, max: xMax, title: { display: true, text: 'Dose / concentration (% or numeric label)' } },
             y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } }
           },
           plugins: {
             tooltip: {
               callbacks: {
-                label: function(ctx) {
-                  return ctx.raw.treatment ? (ctx.raw.treatment + ': ' + ctx.raw.y.toFixed(1) + '%') : ('Predicted: ' + ctx.raw.y.toFixed(1) + '%');
-                },
-                afterLabel: function() {
-                  return lc50 !== null ? 'Approx LC50: ' + lc50.toFixed(1) + '% dose' : 'LC50 not crossed in current data';
-                }
+                label: ctx2 => ctx2.raw.treatment
+                  ? `${ctx2.raw.treatment}: ${ctx2.raw.y.toFixed(1)}%`
+                  : `Predicted: ${ctx2.raw.y.toFixed(1)}%`,
+                afterLabel: () => lc50 !== null ? `LC50/EC50: ~${lc50.toFixed(1)} dose units` : ''
               }
-            }
+            },
+            annotation: { annotations: [] }
           }
         }
       });
 
       const statsEl = $('doseResponseStats');
       if (statsEl) {
-        const model = analysis.model;
-        statsEl.innerHTML = model
-          ? `<div class="form-grid"><div><strong>Model:</strong> ${Math.abs(model.slope) < 1 ? 'log-linear' : 'linear'} dose response</div><div><strong>R²:</strong> ${model.r2.toFixed(3)}</div><div><strong>p-value:</strong> ${model.pValue.toFixed(4)}</div><div><strong>LC50:</strong> ${lc50 !== null ? lc50.toFixed(1) : 'Not crossed'}</div></div>`
-          : '<p style="color:var(--text-light);">Need at least two non-control dose points for curve fitting.</p>';
+        if (params4PL) {
+          const hillInterpret = params4PL.b > 1 ? 'Steep sigmoid (cooperative binding)' : 'Shallow sigmoid (moderate dose-response)';
+          statsEl.innerHTML = `
+            <div style="padding:12px;background:rgba(5,150,105,0.06);border-radius:8px;border-left:4px solid var(--primary);">
+              <div style="font-weight:700;margin-bottom:8px;color:var(--primary);">📊 4-Parameter Logistic (Sigmoidal) Model</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;font-size:0.88rem;">
+                <div><strong>R²:</strong> ${params4PL.r2.toFixed(4)}</div>
+                <div><strong>EC50/LC50:</strong> ${params4PL.ec50.toFixed(2)} dose units</div>
+                <div><strong>Hill slope (b):</strong> ${params4PL.b.toFixed(3)}</div>
+                <div><strong>Min response:</strong> ${params4PL.a.toFixed(1)}%</div>
+                <div><strong>Max response:</strong> ${params4PL.d.toFixed(1)}%</div>
+                <div><strong>Points fitted:</strong> ${points.length}</div>
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-light);margin-top:6px;">${hillInterpret}</div>
+            </div>`;
+        } else {
+          const model = analysis.model;
+          statsEl.innerHTML = model
+            ? `<div style="padding:10px;background:rgba(248,250,252,0.8);border-radius:6px;font-size:0.88rem;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;">
+                  <div><strong>Model:</strong> Linear dose response</div>
+                  <div><strong>R²:</strong> ${model.r2.toFixed(3)}</div>
+                  <div><strong>p-value:</strong> ${model.pValue.toFixed(4)} ${sigStars(model.pValue)}</div>
+                  <div><strong>LC50:</strong> ${lc50 !== null ? lc50.toFixed(1) + ' units' : 'Not crossed'}</div>
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">Need ≥4 dose points for sigmoidal fitting.</div>
+              </div>`
+            : '<p style="color:var(--text-light);font-size:0.88rem;">Need at least 2 different dose points for curve fitting.</p>';
+        }
       }
     }
 
@@ -5731,6 +6017,153 @@
       });
     }
 
+    // ===== BOX PLOT RENDERER (Canvas-drawn, no extra library needed) =====
+    function renderBoxPlotChart() {
+      const canvas = $('boxPlotChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      // Group observations by treatment
+      const groups = {};
+      state.observations.forEach(function(obs) {
+        const t = String(obs.treatment || 'Control');
+        if (!groups[t]) groups[t] = [];
+        const v = safeParseNum(obs.damage);
+        if (v !== null) groups[t].push(v);
+      });
+      const treatments = Object.keys(groups);
+      if (!treatments.length) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '14px Segoe UI';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.fillText('No observations yet for box plot', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      // Compute Q1, median, Q3, whiskers per group
+      const stats = treatments.map(function(t) {
+        const vals = groups[t].slice().sort((a, b) => a - b);
+        const n = vals.length;
+        const median = n % 2 === 0 ? (vals[n/2 - 1] + vals[n/2]) / 2 : vals[Math.floor(n / 2)];
+        const q1 = n >= 4 ? vals[Math.floor(n * 0.25)] : vals[0];
+        const q3 = n >= 4 ? vals[Math.floor(n * 0.75)] : vals[n - 1];
+        const iqr = q3 - q1;
+        const wlo = Math.max(...vals.filter(v => v >= q1 - 1.5 * iqr));
+        const whi = Math.min(...vals.filter(v => v <= q3 + 1.5 * iqr));
+        const outliers = vals.filter(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr);
+        const mean = vals.reduce((a, b) => a + b, 0) / n;
+        return { t, q1, median, q3, wlo: Math.min(q1, wlo), whi: Math.max(q3, whi), outliers, mean, n };
+      });
+
+      const palette = ['#059669', '#3b82f6', '#f97316', '#ef4444', '#8b5cf6', '#0f766e', '#db2777', '#0369a1'];
+      const W = canvas.width, H = canvas.height;
+      const pad = { top: 30, bottom: 50, left: 48, right: 20 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+      const numGroupsPlot = treatments.length;
+      const boxW = Math.max(20, Math.min(60, plotW / (numGroupsPlot * 2)));
+      const maxVal = 100;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Draw grid lines
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let v = 0; v <= 100; v += 20) {
+        const y = pad.top + plotH - (v / maxVal) * plotH;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Segoe UI';
+        ctx.textAlign = 'right';
+        ctx.fillText(v + '%', pad.left - 6, y + 4);
+      }
+
+      const toY = v => pad.top + plotH - (v / maxVal) * plotH;
+      const toX = i => pad.left + (i + 0.5) * (plotW / numGroupsPlot);
+
+      // Draw each box
+      stats.forEach(function(s, i) {
+        const cx = toX(i);
+        const color = palette[i % palette.length];
+        const yQ1 = toY(s.q1), yQ3 = toY(s.q3), yMed = toY(s.median);
+        const yWlo = toY(s.wlo), yWhi = toY(s.whi);
+
+        // Box fill
+        ctx.fillStyle = color + '30';
+        ctx.fillRect(cx - boxW / 2, yQ3, boxW, yQ1 - yQ3);
+
+        // Box border
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - boxW / 2, yQ3, boxW, yQ1 - yQ3);
+
+        // Median line
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.moveTo(cx - boxW / 2, yMed); ctx.lineTo(cx + boxW / 2, yMed);
+        ctx.stroke();
+
+        // Whiskers
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 2]);
+        ctx.beginPath();
+        ctx.moveTo(cx, yQ1); ctx.lineTo(cx, yWlo);
+        ctx.moveTo(cx - boxW / 4, yWlo); ctx.lineTo(cx + boxW / 4, yWlo);
+        ctx.moveTo(cx, yQ3); ctx.lineTo(cx, yWhi);
+        ctx.moveTo(cx - boxW / 4, yWhi); ctx.lineTo(cx + boxW / 4, yWhi);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Mean diamond
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        const yMean = toY(s.mean);
+        ctx.moveTo(cx, yMean - 5); ctx.lineTo(cx + 5, yMean);
+        ctx.lineTo(cx, yMean + 5); ctx.lineTo(cx - 5, yMean);
+        ctx.closePath(); ctx.fill();
+
+        // Outliers
+        s.outliers.forEach(function(ov) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(cx, toY(ov), 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Label
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '11px Segoe UI';
+        ctx.textAlign = 'center';
+        const lbl = s.t.length > 10 ? s.t.substring(0, 9) + '…' : s.t;
+        ctx.fillText(lbl, cx, H - pad.bottom + 16);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Segoe UI';
+        ctx.fillText(`n=${s.n}`, cx, H - pad.bottom + 28);
+      });
+
+      // Y-axis label
+      ctx.save();
+      ctx.translate(14, pad.top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('% Cover Damage', 0, 0);
+      ctx.restore();
+
+      // Title
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 12px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('Box Plot — Treatment Distribution', W / 2, 16);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px Segoe UI';
+      ctx.fillText('◆ = mean, boxes = Q1–Q3, whiskers = 1.5×IQR, ● = outliers', W / 2, H - 4);
+    }
+
     function renderScatterChart() {
       const ctx = $('scatterChart');
       if (!ctx || !window.Chart) return;
@@ -5770,50 +6203,135 @@
 
     function extractWeatherMetricsFromObservation(obs) {
       const notes = String(obs.notes || '');
-      const temp = notes.match(/temp(?:erature)?\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
-      const humidity = notes.match(/(?:rh|humidity)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
-      const wind = notes.match(/wind\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
-      const parsedDynamic = safeJsonParse(obs.dynamic_json, {}) || {};
+      const tempMatch = notes.match(/temp(?:erature)?\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const humMatch  = notes.match(/(?:rh|humidity)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const windMatch = notes.match(/wind\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const d = safeJsonParse(obs.dynamic_json, {}) || {};
+      // Accept any of the field-name variants stored across trial types
+      const temp = tempMatch
+        ? Number(tempMatch[1])
+        : safeParseNum(d.temperature) !== null ? safeParseNum(d.temperature)
+        : safeParseNum(d.field_temp) !== null ? safeParseNum(d.field_temp)
+        : safeParseNum(d.lab_temp) !== null ? safeParseNum(d.lab_temp)
+        : safeParseNum(d.greenhouse_temp);
+      const humidity = humMatch
+        ? Number(humMatch[1])
+        : safeParseNum(d.humidity) !== null ? safeParseNum(d.humidity)
+        : safeParseNum(d.field_humidity) !== null ? safeParseNum(d.field_humidity)
+        : safeParseNum(d.lab_humidity);
+      const wind = windMatch
+        ? Number(windMatch[1])
+        : safeParseNum(d.wind_speed);
       return {
-        temp: temp ? Number(temp[1]) : safeParseNum(parsedDynamic.temperature),
-        humidity: humidity ? Number(humidity[1]) : safeParseNum(parsedDynamic.humidity),
-        wind: wind ? Number(wind[1]) : safeParseNum(parsedDynamic.wind_speed),
+        temp:     Number.isFinite(temp)     ? temp     : null,
+        humidity: Number.isFinite(humidity) ? humidity : null,
+        wind:     Number.isFinite(wind)     ? wind     : null,
         efficacy: 100 - (safeParseNum(obs.damage) || 0)
       };
+    }
+
+    // ===== PEARSON CORRELATION =====
+    function pearsonCorrelation(xs, ys) {
+      const n = xs.length;
+      if (n < 3) return { r: null, r2: null, pValue: null };
+      const mx = xs.reduce((a, b) => a + b, 0) / n;
+      const my = ys.reduce((a, b) => a + b, 0) / n;
+      const num = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0);
+      const dx = Math.sqrt(xs.reduce((s, x) => s + Math.pow(x - mx, 2), 0));
+      const dy = Math.sqrt(ys.reduce((s, y) => s + Math.pow(y - my, 2), 0));
+      const r = (dx === 0 || dy === 0) ? 0 : num / (dx * dy);
+      const r2 = r * r;
+      // t-statistic and 2-tailed p-value using F-distribution: t²(1, n-2) ~ F(1, n-2)
+      const t = Math.abs(r) * Math.sqrt((n - 2) / Math.max(1 - r2, 1e-9));
+      const pValue = fDistPValue(t * t, 1, n - 2);
+      return { r: r.toFixed(4), r2: r2.toFixed(4), pValue: pValue.toFixed(4), n };
     }
 
     function renderWeatherRegressionChart() {
       const ctx = $('weatherRegressionChart');
       const content = $('weatherRegressionContent');
       if (!ctx || !window.Chart) return;
-      const points = state.observations.map(extractWeatherMetricsFromObservation).filter(function(p) {
-        return Number.isFinite(p.temp) && Number.isFinite(p.efficacy);
-      }).map(function(p) { return { x: p.temp, y: p.efficacy }; });
+
+      // Active variable selector
+      const selector = $('weatherVarSelector');
+      const activeVar = selector ? selector.value : 'temp';
+
+      const allMetrics = state.observations.map(extractWeatherMetricsFromObservation);
+      const tempPts = allMetrics.filter(p => Number.isFinite(p.temp) && Number.isFinite(p.efficacy)).map(p => ({ x: p.temp, y: p.efficacy }));
+      const humPts  = allMetrics.filter(p => Number.isFinite(p.humidity) && Number.isFinite(p.efficacy)).map(p => ({ x: p.humidity, y: p.efficacy }));
+      const windPts = allMetrics.filter(p => Number.isFinite(p.wind) && Number.isFinite(p.efficacy)).map(p => ({ x: p.wind, y: p.efficacy }));
+
+      const varMap = {
+        temp:     { points: tempPts, label: 'Temperature (°C)', color: '#ef4444', name: 'Temperature' },
+        humidity: { points: humPts,  label: 'Humidity (%)',     color: '#3b82f6', name: 'Humidity' },
+        wind:     { points: windPts, label: 'Wind Speed (km/h)',color: '#8b5cf6', name: 'Wind Speed' }
+      };
+      const chosen = varMap[activeVar] || varMap.temp;
+      const points = chosen.points;
+
       const model = linearRegression(points, false);
-      const line = model ? [
-        { x: Math.min.apply(null, points.map(function(p) { return p.x; })), y: model.predict(Math.min.apply(null, points.map(function(p) { return p.x; }))) },
-        { x: Math.max.apply(null, points.map(function(p) { return p.x; })), y: model.predict(Math.max.apply(null, points.map(function(p) { return p.x; }))) }
+      const line = (model && points.length >= 2) ? [
+        { x: Math.min(...points.map(p => p.x)), y: model.predict(Math.min(...points.map(p => p.x))) },
+        { x: Math.max(...points.map(p => p.x)), y: model.predict(Math.max(...points.map(p => p.x))) }
       ] : [];
+
       if (state.charts.weatherRegression) state.charts.weatherRegression.destroy();
       state.charts.weatherRegression = new Chart(ctx, {
         type: 'scatter',
         data: { datasets: [
-          { label: 'Observed pairs', data: points, backgroundColor: 'rgba(59,130,246,0.55)', borderColor: '#2563eb' },
-          { label: 'Regression', data: line, parsing: false, showLine: true, pointRadius: 0, borderColor: '#ef4444', borderWidth: 2 }
+          { label: `${chosen.name} vs Efficacy`, data: points, backgroundColor: chosen.color + '88', borderColor: chosen.color, pointRadius: 5 },
+          { label: 'Regression line', data: line, parsing: false, showLine: true, pointRadius: 0, borderColor: '#1e293b', borderWidth: 2, borderDash: [5, 3] }
         ] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { title: { display: true, text: 'Temperature (parsed from notes/dynamic JSON)' } },
+            x: { title: { display: true, text: chosen.label } },
             y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } }
           }
         }
       });
+
       if (content) {
-        content.innerHTML = model
-          ? `<div class="form-grid"><div><strong>Slope:</strong> ${model.slope.toFixed(3)}</div><div><strong>R²:</strong> ${model.r2.toFixed(3)}</div><div><strong>p-value:</strong> ${model.pValue.toFixed(4)}</div><div><strong>Samples:</strong> ${model.n}</div></div>`
-          : '<p style="color:var(--text-light);">Add temperature or humidity information in observation notes to enable weather regression.</p>';
+        // Pearson r for all three variables
+        const corrTemp = pearsonCorrelation(tempPts.map(p=>p.x), tempPts.map(p=>p.y));
+        const corrHum  = pearsonCorrelation(humPts.map(p=>p.x),  humPts.map(p=>p.y));
+        const corrWind = pearsonCorrelation(windPts.map(p=>p.x), windPts.map(p=>p.y));
+
+        const corrRow = (label, c, color) => c.r !== null
+          ? `<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;background:rgba(248,250,252,0.8);">
+               <div style="width:40%;font-weight:600;">${label}</div>
+               <div style="width:15%;text-align:center;font-weight:700;color:${color};">r = ${c.r}</div>
+               <div style="width:15%;text-align:center;">R² = ${c.r2}</div>
+               <div style="width:20%;text-align:center;">p = ${c.pValue} ${sigStars(parseFloat(c.pValue))}</div>
+               <div style="width:10%;text-align:center;color:var(--text-light);">n=${c.n}</div>
+             </div>`
+          : `<div style="padding:8px 12px;color:var(--text-light);">${label}: Insufficient data (need ≥3 points with this variable)</div>`;
+
+        const interp = [];
+        [{ name: 'Temperature', c: corrTemp }, { name: 'Humidity', c: corrHum }, { name: 'Wind', c: corrWind }].forEach(function({ name, c }) {
+          if (c.r === null) return;
+          const rv = parseFloat(c.r);
+          const dir = rv > 0 ? 'positively' : 'negatively';
+          const strength = Math.abs(rv) > 0.7 ? 'strongly' : Math.abs(rv) > 0.4 ? 'moderately' : 'weakly';
+          const sig = parseFloat(c.pValue) < 0.05 ? '(significant)' : '(not significant)';
+          interp.push(`${name} is ${strength} ${dir} correlated with efficacy ${sig}`);
+        });
+
+        const selected = model
+          ? `<div style="margin-bottom:8px;padding:10px;background:rgba(5,150,105,0.06);border-left:3px solid var(--primary);border-radius:6px;">
+               <strong>${chosen.name}:</strong> slope=${model.slope.toFixed(3)}, R²=${model.r2.toFixed(3)}, p=${model.pValue.toFixed(4)} ${sigStars(model.pValue)}, n=${model.n}
+             </div>`
+          : `<div style="color:var(--text-light);margin-bottom:8px;">Select a weather variable above to see regression. Add weather data to observation notes (format: temp: 28, rh: 65%, wind: 12).</div>`;
+
+        content.innerHTML = selected +
+          `<div style="font-weight:600;margin-bottom:6px;color:var(--text);">Pearson Correlations — All Weather Variables</div>
+           <div style="display:flex;flex-direction:column;gap:4px;">
+             ${corrRow('🌡️ Temperature vs Efficacy', corrTemp, '#ef4444')}
+             ${corrRow('💧 Humidity vs Efficacy',    corrHum,  '#3b82f6')}
+             ${corrRow('💨 Wind Speed vs Efficacy',  corrWind, '#8b5cf6')}
+           </div>
+           ${interp.length ? `<div style="margin-top:10px;font-size:0.82rem;color:var(--text-light);line-height:1.7;">${interp.join('<br>')}</div>` : ''}`;
       }
     }
 
