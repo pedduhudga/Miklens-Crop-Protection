@@ -1151,7 +1151,7 @@
               <div class="form-grid three">
                 <div class="form-group">
                   <label>Ingredient</label>
-                  <select id="formIngredientName"></select>
+                  <select id="formIngredientName" onchange="window.autoFillIngredientUnit(this.value)"></select>
                 </div>
                 <div class="form-group">
                   <label>Quantity</label>
@@ -2506,6 +2506,16 @@
       const hit = state.ingredients.find(i => String(i.name).toLowerCase() === String(name || '').toLowerCase());
       return hit ? (safeParseNum(hit.cost) || 0) : 0;
     }
+
+    window.autoFillIngredientUnit = function(name) {
+      const hit = state.ingredients.find(i => String(i.name).toLowerCase() === String(name || '').toLowerCase());
+      if (!hit || !hit.unit) return;
+      const unitSel = $('formIngredientUnit');
+      if (!unitSel) return;
+      // Match to one of the option values; fall back gracefully
+      const match = Array.from(unitSel.options).find(o => o.value.toLowerCase() === String(hit.unit).toLowerCase());
+      if (match) unitSel.value = match.value;
+    };
 
     function normalizeName(value) {
       return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -4470,6 +4480,9 @@
           `<option value="${f.id}">${f.name} (${f.type})</option>`
         ).join('');
       }
+
+      // Always refresh ingredient dropdown so saved ingredients are selectable
+      populateIngredientSelectors();
     }
 
     function renderTrials() {
@@ -5415,6 +5428,7 @@
         
         renderFormulations();
         renderTrials();
+        renderIngredientMaster();
         renderObservations();
         renderDataHealth();
         if ($('dashboard').classList.contains('active')) renderDashboard();
