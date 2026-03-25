@@ -8,6 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -914,6 +915,30 @@
               <h4>Avg Efficacy</h4>
               <p class="value" id="stat-efficacy">0%</p>
             </div>
+            <div class="stat-card">
+              <h4>Top Formulation</h4>
+              <p class="value" id="stat-top-formulation" style="font-size:1.05rem;">-</p>
+            </div>
+            <div class="stat-card">
+              <h4>Data Quality</h4>
+              <p class="value" id="stat-data-quality">0</p>
+            </div>
+            <div class="stat-card">
+              <h4>Pending Sync</h4>
+              <p class="value" id="stat-pending-sync">0</p>
+            </div>
+            <div class="stat-card">
+              <h4>Offline Cache</h4>
+              <p class="value" id="stat-offline-cache">Local</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <h3 style="margin:0;">Key KPIs</h3>
+              <div style="font-size:0.85rem;color:var(--text-light);">Operational view for running trials, efficacy quality, sync status, and best-performing formulation.</div>
+            </div>
+            <div id="dashboardInsights" style="margin-top:12px;"></div>
           </div>
 
           <div class="card">
@@ -1624,6 +1649,99 @@
             </div>
             <h4 style="margin:12px 0 6px;color:var(--text-light);font-size:0.86rem;">Treatment-Day Heatmap</h4>
             <div id="heatmapContainer"></div>
+            <div id="doseResponseStats" style="margin-top:12px;"></div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <h3 style="margin:0;">Variance, Confidence and Comparative Charts</h3>
+              <div class="export-buttons" style="margin:0;">
+                <button class="btn-secondary btn-sm" onclick="window.exportChartImage('varianceChart')">PNG</button>
+                <button class="btn-secondary btn-sm" onclick="window.exportChartPdf('varianceChart', 'Treatment Variance Chart')">PDF</button>
+              </div>
+            </div>
+            <div class="form-grid" style="margin-top:10px;">
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Treatment Variance and 95% CI</h4>
+                <canvas id="varianceChart" style="max-height:260px;"></canvas>
+              </div>
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Treatment Comparison Radar</h4>
+                <canvas id="radarChart" style="max-height:260px;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <h3 style="margin:0;">Economic and Weather Relationships</h3>
+              <div class="export-buttons" style="margin:0;">
+                <button class="btn-secondary btn-sm" onclick="window.exportChartImage('scatterChart')">Scatter PNG</button>
+                <button class="btn-secondary btn-sm" onclick="window.exportChartImage('weatherRegressionChart')">Regression PNG</button>
+              </div>
+            </div>
+            <div class="form-grid" style="margin-top:10px;">
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Cost vs Efficacy Scatter</h4>
+                <canvas id="scatterChart" style="max-height:260px;"></canvas>
+              </div>
+              <div>
+                <h4 style="margin:0 0 6px;color:var(--text-light);font-size:0.86rem;">Weather vs Efficacy Regression</h4>
+                <canvas id="weatherRegressionChart" style="max-height:260px;"></canvas>
+              </div>
+            </div>
+            <div id="weatherRegressionContent" style="margin-top:12px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Principal Component Analysis (PCA)</h3>
+            <div class="form-grid">
+              <div>
+                <canvas id="pcaChart" style="max-height:280px;"></canvas>
+              </div>
+              <div id="pcaSummary"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Trial Design Builder</h3>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Design Type</label>
+                <select id="designType">
+                  <option value="CRD">CRD</option>
+                  <option value="RCBD">RCBD</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Treatments</label>
+                <input type="number" id="designTreatments" min="2" value="6">
+              </div>
+              <div class="form-group">
+                <label>Replications</label>
+                <input type="number" id="designReplications" min="2" value="4">
+              </div>
+            </div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Pilot CV %</label>
+                <input type="number" id="designPilotCv" min="0" step="0.1" value="18">
+              </div>
+              <div class="form-group">
+                <label>Pilot SD</label>
+                <input type="number" id="designPilotSd" min="0" step="0.1" value="8">
+              </div>
+              <div class="form-group">
+                <label>Target Precision %</label>
+                <input type="number" id="designTargetPrecision" min="1" step="0.1" value="10">
+              </div>
+            </div>
+            <div class="export-buttons">
+              <button class="btn-primary btn-sm" onclick="window.generateTrialDesign()">Generate Layout</button>
+              <button class="btn-secondary btn-sm" onclick="window.suggestReplications()">Suggest Replications</button>
+            </div>
+            <div id="designSuggestion" style="margin-top:10px;"></div>
+            <div id="designLayout" style="margin-top:12px;"></div>
           </div>
 
           <!-- FINANCIAL DASHBOARD -->
@@ -1755,6 +1873,10 @@
                 <h4>Trial Summary Report</h4>
                 <p>All trials, efficacy outcomes, CV quality, and key metrics.</p>
                 <button class="btn-primary btn-sm" onclick="window.generateTrialSummaryReport()">Generate PDF</button>
+                <div class="export-buttons" style="margin-top:8px;">
+                  <button class="btn-secondary btn-sm" onclick="window.exportTrialSummaryCharts('png')">Charts PNG</button>
+                  <button class="btn-secondary btn-sm" onclick="window.exportTrialSummaryCharts('pdf')">Charts PDF</button>
+                </div>
               </div>
               <div class="report-card">
                 <h4>Regulatory Snapshot</h4>
@@ -1929,7 +2051,12 @@
             <div style="font-size:0.85rem;color:var(--text-light);margin-top:6px;">
               Sheet ID: <span id="settingGoogleSheetIdPreview">-</span> | Folder ID: <span id="settingGoogleDriveFolderIdPreview">-</span>
             </div>
-            <button class="btn-primary" id="btnSaveUrl">Save Settings</button>
+            <div class="export-buttons">
+              <button class="btn-primary" id="btnSaveUrl">Save Settings</button>
+              <button class="btn-secondary btn-sm" id="btnBackupNow" type="button">Backup Now</button>
+              <button class="btn-secondary btn-sm" id="btnSetupWeeklyBackup" type="button">Setup Weekly Backup</button>
+            </div>
+            <div id="backupStatus" style="font-size:0.85rem;color:var(--text-light);margin-top:8px;">Drive backup not configured yet.</div>
           </div>
           <div class="card">
             <h3>Data Management</h3>
@@ -2330,7 +2457,10 @@
       compareBeforeId: '',
       compareAfterId: '',
       annotator: { mode: 'pen', drawing: false, startX: 0, startY: 0 },
-      harvestRecords: (function() { try { return JSON.parse(localStorage.getItem('agri-harvest') || '[]'); } catch(e) { return []; } })()
+      harvestRecords: (function() { try { return JSON.parse(localStorage.getItem('agri-harvest') || '[]'); } catch(e) { return []; } })(),
+      offlineDb: null,
+      indexedDbReady: false,
+      lastOfflineCacheAt: ''
     };
 
     const $ = id => document.getElementById(id);
@@ -2459,6 +2589,97 @@
 
     function persistIngredients() {
       localStorage.setItem('agri-ingredients', JSON.stringify(state.ingredients));
+      persistOfflineSnapshot();
+    }
+
+    const OFFLINE_DB_NAME = 'miklens-agri-offline';
+    const OFFLINE_DB_VERSION = 1;
+    const OFFLINE_STORE = 'kv';
+
+    function openOfflineDb() {
+      return new Promise(function(resolve, reject) {
+        if (!window.indexedDB) {
+          reject(new Error('IndexedDB not supported'));
+          return;
+        }
+        const req = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+        req.onupgradeneeded = function(event) {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(OFFLINE_STORE)) {
+            db.createObjectStore(OFFLINE_STORE);
+          }
+        };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { reject(req.error || new Error('Failed to open IndexedDB')); };
+      });
+    }
+
+    function idbSet(key, value) {
+      if (!state.offlineDb) return Promise.resolve();
+      return new Promise(function(resolve, reject) {
+        const tx = state.offlineDb.transaction(OFFLINE_STORE, 'readwrite');
+        tx.objectStore(OFFLINE_STORE).put(value, key);
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(tx.error || new Error('IndexedDB write failed')); };
+      });
+    }
+
+    function idbGet(key) {
+      if (!state.offlineDb) return Promise.resolve(null);
+      return new Promise(function(resolve, reject) {
+        const tx = state.offlineDb.transaction(OFFLINE_STORE, 'readonly');
+        const req = tx.objectStore(OFFLINE_STORE).get(key);
+        req.onsuccess = function() { resolve(req.result || null); };
+        req.onerror = function() { reject(req.error || new Error('IndexedDB read failed')); };
+      });
+    }
+
+    async function initOfflineCache() {
+      try {
+        state.offlineDb = await openOfflineDb();
+        state.indexedDbReady = true;
+        const cache = await idbGet('app-cache');
+        if (cache && typeof cache === 'object') {
+          if (Array.isArray(cache.formulations) && !state.formulations.length) state.formulations = cache.formulations;
+          if (Array.isArray(cache.trials) && !state.trials.length) state.trials = cache.trials;
+          if (Array.isArray(cache.observations) && !state.observations.length) state.observations = cache.observations;
+          if (Array.isArray(cache.ingredients) && !state.ingredients.length) state.ingredients = cache.ingredients;
+          if (Array.isArray(cache.harvestRecords) && !state.harvestRecords.length) state.harvestRecords = cache.harvestRecords;
+          if (Array.isArray(cache.syncQueue) && !state.syncQueue.length) state.syncQueue = cache.syncQueue;
+          state.lastOfflineCacheAt = cache.updatedAt || '';
+        }
+      } catch (_) {
+        state.indexedDbReady = false;
+      }
+      updateOfflineCacheUI();
+    }
+
+    function updateOfflineCacheUI() {
+      const stat = $('stat-offline-cache');
+      if (stat) stat.textContent = state.indexedDbReady ? 'IndexedDB' : 'Local';
+    }
+
+    function updateBackupStatus(message, isError) {
+      const el = $('backupStatus');
+      if (!el) return;
+      el.style.color = isError ? 'var(--danger)' : 'var(--text-light)';
+      el.textContent = message;
+    }
+
+    async function persistOfflineSnapshot() {
+      if (!state.indexedDbReady) return;
+      const snapshot = {
+        updatedAt: new Date().toISOString(),
+        formulations: state.formulations,
+        trials: state.trials,
+        observations: state.observations,
+        ingredients: state.ingredients,
+        harvestRecords: state.harvestRecords,
+        syncQueue: state.syncQueue
+      };
+      state.lastOfflineCacheAt = snapshot.updatedAt;
+      try { await idbSet('app-cache', snapshot); } catch (_) {}
+      updateOfflineCacheUI();
     }
 
     function upsertByIdLocal(arr, item) {
@@ -2479,6 +2700,7 @@
       localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
       updateQueueUI();
       renderDataHealth();
+      persistOfflineSnapshot();
     }
 
     function renderAllLocal() {
@@ -2500,11 +2722,141 @@
       populateFinancialTrialFilter();
       renderDataHealth();
       renderAlertPanel();
+      persistOfflineSnapshot();
     }
 
     function findIngredientCostByName(name) {
       const hit = state.ingredients.find(i => String(i.name).toLowerCase() === String(name || '').toLowerCase());
       return hit ? (safeParseNum(hit.cost) || 0) : 0;
+    }
+
+    function getTrialById(trialId) {
+      return state.trials.find(function(t) { return String(t.id) === String(trialId); }) || null;
+    }
+
+    function getFormulationById(formulationId) {
+      return state.formulations.find(function(f) { return String(f.id) === String(formulationId); }) || null;
+    }
+
+    function getTreatmentDosePercent(treatment, trialId) {
+      const defaultMap = { Control: 0, T1: 25, T2: 50, T3: 75, T4: 100, T5: 125 };
+      const trial = getTrialById(trialId);
+      const labels = trial && trial.treatment_labels ? trial.treatment_labels : null;
+      const label = labels ? labels[String(treatment || 'Control')] : '';
+      const extracted = String(label || '').match(/(\d+(?:\.\d+)?)/);
+      if (extracted) {
+        const numeric = Number(extracted[1]);
+        if (Number.isFinite(numeric)) return numeric;
+      }
+      return defaultMap[String(treatment || 'Control')] ?? 0;
+    }
+
+    function approximateTwoTailedPFromT(tValue) {
+      const z = Math.abs(Number(tValue) || 0);
+      const approx = Math.exp(-0.717 * z - 0.416 * z * z);
+      return Math.max(0, Math.min(1, approx));
+    }
+
+    function linearRegression(points, useLogX) {
+      const clean = (points || []).filter(function(p) {
+        return p && Number.isFinite(p.x) && Number.isFinite(p.y) && (!useLogX || p.x > 0);
+      }).map(function(p) {
+        return { x: useLogX ? Math.log(p.x) : p.x, y: p.y, rawX: p.x };
+      });
+      if (clean.length < 2) return null;
+      const n = clean.length;
+      const meanX = clean.reduce(function(s, p) { return s + p.x; }, 0) / n;
+      const meanY = clean.reduce(function(s, p) { return s + p.y; }, 0) / n;
+      let ssX = 0;
+      let ssXY = 0;
+      clean.forEach(function(p) {
+        ssX += Math.pow(p.x - meanX, 2);
+        ssXY += (p.x - meanX) * (p.y - meanY);
+      });
+      if (!ssX) return null;
+      const slope = ssXY / ssX;
+      const intercept = meanY - slope * meanX;
+      const predictions = clean.map(function(p) { return intercept + slope * p.x; });
+      const ssRes = clean.reduce(function(s, p, idx) { return s + Math.pow(p.y - predictions[idx], 2); }, 0);
+      const ssTot = clean.reduce(function(s, p) { return s + Math.pow(p.y - meanY, 2); }, 0);
+      const r2 = ssTot ? 1 - (ssRes / ssTot) : 0;
+      const se = n > 2 ? Math.sqrt(ssRes / (n - 2)) : 0;
+      const slopeSe = ssX ? se / Math.sqrt(ssX) : 0;
+      const tValue = slopeSe ? slope / slopeSe : 0;
+      return {
+        n,
+        slope,
+        intercept,
+        r2,
+        se,
+        tValue,
+        pValue: approximateTwoTailedPFromT(tValue),
+        predict: function(x) {
+          const tx = useLogX ? Math.log(Math.max(0.0001, x)) : x;
+          return intercept + slope * tx;
+        }
+      };
+    }
+
+    function buildTreatmentAnalytics(trialId) {
+      const rows = [];
+      const targetObs = state.observations.filter(function(o) {
+        return !trialId || String(o.trial_id) === String(trialId);
+      });
+      const grouped = {};
+      targetObs.forEach(function(obs) {
+        const key = String(obs.treatment || 'Control');
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(obs);
+      });
+      Object.keys(grouped).forEach(function(treatment) {
+        const obs = grouped[treatment];
+        const efficacyVals = obs.map(function(o) { return 100 - (safeParseNum(o.damage) || 0); });
+        const pestVals = obs.map(function(o) { return safeParseNum(o.pest_count); }).filter(function(v) { return v !== null; });
+        const phytoVals = obs.map(function(o) { return safeParseNum(o.phyto); }).filter(function(v) { return v !== null; });
+        const diseaseVals = obs.map(function(o) { return safeParseNum(o.disease_severity); }).filter(function(v) { return v !== null; });
+        if (!efficacyVals.length) return;
+        const n = efficacyVals.length;
+        const mean = efficacyVals.reduce(function(a, b) { return a + b; }, 0) / n;
+        const variance = efficacyVals.reduce(function(s, v) { return s + Math.pow(v - mean, 2); }, 0) / Math.max(1, n - 1);
+        const sd = Math.sqrt(variance);
+        const se = sd / Math.sqrt(n);
+        const ci95 = 1.96 * se;
+        const form = trialId ? getFormulationById((getTrialById(trialId) || {}).formulation_id) : null;
+        const cost = form ? (safeParseNum(form.ingredient_cost_total) || safeParseNum(form.cost) || 0) : 0;
+        rows.push({
+          treatment,
+          n,
+          dose: getTreatmentDosePercent(treatment, trialId),
+          meanEfficacy: mean,
+          variance,
+          sd,
+          se,
+          ci95,
+          avgPestCount: pestVals.length ? pestVals.reduce(function(a, b) { return a + b; }, 0) / pestVals.length : 0,
+          avgPhyto: phytoVals.length ? phytoVals.reduce(function(a, b) { return a + b; }, 0) / phytoVals.length : 0,
+          avgDisease: diseaseVals.length ? diseaseVals.reduce(function(a, b) { return a + b; }, 0) / diseaseVals.length : 0,
+          cost
+        });
+      });
+      return rows.sort(function(a, b) { return a.dose - b.dose; });
+    }
+
+    function computeDoseResponseAnalytics(trialId) {
+      const rows = buildTreatmentAnalytics(trialId).filter(function(r) { return r.treatment !== 'Control'; });
+      const points = rows.map(function(r) { return { x: r.dose, y: r.meanEfficacy, treatment: r.treatment }; });
+      const model = linearRegression(points, true) || linearRegression(points, false);
+      if (!model) return { points: points, curve: [], model: null, ciBand: [] };
+      const minX = Math.max(1, Math.min.apply(null, points.map(function(p) { return p.x; })));
+      const maxX = Math.max.apply(null, points.map(function(p) { return p.x; }));
+      const curve = [];
+      const ciBand = [];
+      for (var x = minX; x <= maxX; x += Math.max(1, (maxX - minX) / 24)) {
+        const y = Math.max(0, Math.min(100, model.predict(x)));
+        curve.push({ x: x, y: y });
+        ciBand.push({ x: x, yMin: Math.max(0, y - 1.96 * model.se), yMax: Math.min(100, y + 1.96 * model.se) });
+      }
+      return { points: points, curve: curve, model: model, ciBand: ciBand };
     }
 
     window.autoFillIngredientUnit = function(name) {
@@ -3171,11 +3523,6 @@
       if (val >= 50) return 'C';
       if (val >= 25) return 'D';
       return 'F';
-    }
-
-    function getTreatmentDosePercent(treatment) {
-      const map = { Control: 0, T1: 25, T2: 50, T3: 75, T4: 100, T5: 125 };
-      return map[String(treatment || 'Control')] ?? 0;
     }
 
     function diseaseSeverityIndex(obs) {
@@ -4249,8 +4596,7 @@
           throw new Error(`Failed to reach API. ${protocolHint} URL: ${targetUrl}`);
         }
         if (!state.isOnline) {
-          if (data) state.syncQueue.push({action, data, timestamp: Date.now()});
-          localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+          if (data) queueForSync(action, data);
         }
         throw err;
       }
@@ -4277,6 +4623,7 @@
       state.syncQueue = remaining;
       localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
       state.isSyncing = false;
+      persistOfflineSnapshot();
       updateQueueUI();
       renderDataHealth();
       if (sentCount > 0) {
@@ -4665,9 +5012,9 @@
           <td>${trial ? trial.name : 'N/A'}</td>
           <td>${h.date ? new Date(h.date).toLocaleDateString() : '-'}</td>
           <td>${h.crop || '-'}</td>
-          <td>${h.yield != null ? h.yield + ' ' + (h.yield_unit || '') : '-'}</td>
-          <td>${h.grade || '-'}</td>
-          <td>${h.moisture != null ? h.moisture + '%' : '-'}</td>
+          <td>${h.yield_amount != null ? h.yield_amount + ' ' + (h.yield_unit || '') : '-'}</td>
+          <td>${h.quality_grade || '-'}</td>
+          <td>${h.moisture_pct != null ? h.moisture_pct + '%' : '-'}</td>
           <td><button class="btn-sm btn-secondary" style="color:var(--danger);" onclick="window.deleteHarvestRecord('${h.id}')">Delete</button></td>
         </tr>`;
       }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;">No harvest records yet</td></tr>';
@@ -4676,6 +5023,7 @@
     window.deleteHarvestRecord = function(id) {
       state.harvestRecords = state.harvestRecords.filter(h => String(h.id) !== String(id));
       localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
+      persistOfflineSnapshot();
       renderHarvestTable();
       if (state.scriptUrl) {
         ajax('deleteharvestrecord', { id }).catch(() => {
@@ -4693,7 +5041,9 @@
       const fromD = new Date(from);
       const toD = new Date(to); toD.setHours(23, 59, 59);
       const filteredObs = state.observations.filter(o => { const d = new Date(o.date); return d >= fromD && d <= toD; });
+      const filteredHarvest = state.harvestRecords.filter(h => { const d = new Date(h.date); return d >= fromD && d <= toD; });
       const filteredTrialIds = new Set(filteredObs.map(o => o.trial_id));
+      filteredHarvest.forEach(function(h) { filteredTrialIds.add(h.trial_id); });
       const filteredTrials = state.trials.filter(t => {
         if (filteredTrialIds.has(t.id)) return true;
         if (t.start_date) { const d = new Date(t.start_date); return d >= fromD && d <= toD; }
@@ -4703,6 +5053,7 @@
         settings: state.settings,
         trials: filteredTrials,
         observations: filteredObs,
+        harvestRecords: filteredHarvest,
         ingredients: state.ingredients,
         formulations: state.formulations,
         dateRange: { from, to },
@@ -4714,7 +5065,7 @@
       a.href = url;
       a.download = `agri-backup-filtered-${from}-to-${to}.json`;
       a.click();
-      showToast(`Exported ${filteredTrials.length} trials and ${filteredObs.length} observations`, 'success');
+      showToast(`Exported ${filteredTrials.length} trials, ${filteredObs.length} observations and ${filteredHarvest.length} harvest records`, 'success');
     };
 
     // === ESCAPE HTML HELPER (used in trial cards) ===
@@ -4747,10 +5098,50 @@
 
     function renderDashboard() {
       const stats = computeAggregateStats();
+      const dq = computeDataQualityReport();
+      const trialScores = state.trials.map(function(trial) {
+        const trialObs = state.observations.filter(function(o) { return String(o.trial_id) === String(trial.id); });
+        const meanEff = trialObs.length
+          ? trialObs.reduce(function(s, o) { return s + (100 - (safeParseNum(o.damage) || 0)); }, 0) / trialObs.length
+          : 0;
+        const formulation = getFormulationById(trial.formulation_id);
+        return { trial: trial, formulation: formulation, meanEff: meanEff };
+      }).sort(function(a, b) { return b.meanEff - a.meanEff; });
+      const top = trialScores[0] || null;
       $('stat-formulations').textContent = state.formulations.length;
       $('stat-active-trials').textContent = state.trials.filter(t => t.status === 'Active').length;
       $('stat-observations').textContent = state.observations.length;
       $('stat-efficacy').textContent = stats.avgEfficacy + '%';
+      $('stat-top-formulation').textContent = top && top.formulation ? top.formulation.name : '-';
+      $('stat-data-quality').textContent = dq.label === 'No Data' ? 'N/A' : dq.score + '/100';
+      $('stat-pending-sync').textContent = String(state.syncQueue.length || 0);
+      updateOfflineCacheUI();
+
+      const dashboardInsights = $('dashboardInsights');
+      if (dashboardInsights) {
+        dashboardInsights.innerHTML = `
+          <div class="form-grid">
+            <div>
+              <h4 style="margin:0 0 8px;color:var(--primary);">Operational Summary</h4>
+              <div style="display:grid;gap:6px;font-size:0.9rem;">
+                <div><strong>Trials Running:</strong> ${state.trials.filter(function(t) { return (t.status || 'Active') === 'Active'; }).length}</div>
+                <div><strong>Average Efficacy:</strong> ${stats.avgEfficacy}%</div>
+                <div><strong>Top-performing Trial:</strong> ${top ? escapeHtml(top.trial.name || '-') + ' (' + top.meanEff.toFixed(1) + '%)' : '-'}</div>
+                <div><strong>Pending Sync Items:</strong> ${state.syncQueue.length}</div>
+              </div>
+            </div>
+            <div>
+              <h4 style="margin:0 0 8px;color:var(--accent);">Data & Cache Health</h4>
+              <div style="display:grid;gap:6px;font-size:0.9rem;">
+                <div><strong>Data Quality:</strong> ${dq.label === 'No Data' ? 'No Data' : dq.score + '/100 (' + dq.label + ')'}</div>
+                <div><strong>Cache Engine:</strong> ${state.indexedDbReady ? 'IndexedDB offline cache active' : 'Fallback local cache only'}</div>
+                <div><strong>Last Offline Snapshot:</strong> ${state.lastOfflineCacheAt ? new Date(state.lastOfflineCacheAt).toLocaleString() : 'Not captured yet'}</div>
+                <div><strong>Observations per Trial:</strong> ${state.trials.length ? (state.observations.length / state.trials.length).toFixed(1) : '0.0'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
       
       renderEfficacyChart();
       renderDistributionChart();
@@ -4907,6 +5298,11 @@
       renderDayWiseChart();
       renderDoseResponseChart();
       renderHeatmap();
+      renderVarianceChart();
+      renderRadarChart();
+      renderScatterChart();
+      renderWeatherRegressionChart();
+      renderPcaChart();
     }
 
     function renderDayWiseChart() {
@@ -4950,26 +5346,13 @@
     function renderDoseResponseChart() {
       const ctx = $('doseResponseChart');
       if (!ctx || !window.Chart) return;
-      const byTreatment = {};
-      state.observations.forEach(function(o) {
-        const t = String(o.treatment || 'Control');
-        const v = safeParseNum(o.damage);
-        if (v === null) return;
-        if (!byTreatment[t]) byTreatment[t] = [];
-        byTreatment[t].push(100 - v);
-      });
-      const points = Object.keys(byTreatment)
-        .map(function(t) {
-          const vals = byTreatment[t];
-          const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-          return { treatment: t, x: getTreatmentDosePercent(t), y: mean };
-        })
-        .sort((a, b) => a.x - b.x);
-
+      const analysis = computeDoseResponseAnalytics();
+      const points = analysis.points || [];
+      const lineData = analysis.curve || [];
       const lc50 = (function() {
-        for (let i = 1; i < points.length; i++) {
-          const p1 = points[i - 1];
-          const p2 = points[i];
+        for (let i = 1; i < lineData.length; i++) {
+          const p1 = lineData[i - 1];
+          const p2 = lineData[i];
           if ((p1.y <= 50 && p2.y >= 50) || (p1.y >= 50 && p2.y <= 50)) {
             const ratio = (50 - p1.y) / (p2.y - p1.y || 1);
             return p1.x + ratio * (p2.x - p1.x);
@@ -4983,27 +5366,36 @@
         type: 'line',
         data: {
           datasets: [{
-            label: 'Dose-Response',
+            label: 'Observed Dose-Response',
             data: points,
             parsing: false,
             borderColor: '#0891b2',
             backgroundColor: 'rgba(8,145,178,0.2)',
-            tension: 0.35,
+            showLine: false,
             pointRadius: 5
+          }, {
+            label: 'Fitted Curve',
+            data: lineData,
+            parsing: false,
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5,150,105,0.1)',
+            tension: 0.35,
+            pointRadius: 0,
+            borderWidth: 2
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { type: 'linear', min: 0, max: 130, title: { display: true, text: 'Dosage %' } },
+            x: { type: 'linear', min: 0, max: Math.max(130, ...points.map(function(p) { return p.x; }), 130), title: { display: true, text: 'Dosage / label numeric value' } },
             y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } }
           },
           plugins: {
             tooltip: {
               callbacks: {
                 label: function(ctx) {
-                  return ctx.raw.treatment + ': ' + ctx.raw.y.toFixed(1) + '%';
+                  return ctx.raw.treatment ? (ctx.raw.treatment + ': ' + ctx.raw.y.toFixed(1) + '%') : ('Predicted: ' + ctx.raw.y.toFixed(1) + '%');
                 },
                 afterLabel: function() {
                   return lc50 !== null ? 'Approx LC50: ' + lc50.toFixed(1) + '% dose' : 'LC50 not crossed in current data';
@@ -5013,7 +5405,384 @@
           }
         }
       });
+
+      const statsEl = $('doseResponseStats');
+      if (statsEl) {
+        const model = analysis.model;
+        statsEl.innerHTML = model
+          ? `<div class="form-grid"><div><strong>Model:</strong> ${Math.abs(model.slope) < 1 ? 'log-linear' : 'linear'} dose response</div><div><strong>R²:</strong> ${model.r2.toFixed(3)}</div><div><strong>p-value:</strong> ${model.pValue.toFixed(4)}</div><div><strong>LC50:</strong> ${lc50 !== null ? lc50.toFixed(1) : 'Not crossed'}</div></div>`
+          : '<p style="color:var(--text-light);">Need at least two non-control dose points for curve fitting.</p>';
+      }
     }
+
+    function renderVarianceChart() {
+      const ctx = $('varianceChart');
+      if (!ctx || !window.Chart) return;
+      const rows = buildTreatmentAnalytics();
+      if (state.charts.variance) state.charts.variance.destroy();
+      state.charts.variance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rows.map(function(r) { return r.treatment; }),
+          datasets: [{
+            label: 'Mean Efficacy %',
+            data: rows.map(function(r) { return r.meanEfficacy; }),
+            backgroundColor: 'rgba(5,150,105,0.55)',
+            borderColor: '#047857',
+            borderWidth: 1,
+            errorBars: rows.map(function(r) { return r.ci95; })
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Mean efficacy with 95% CI' } } },
+          plugins: { legend: { display: false } }
+        },
+        plugins: [{
+          id: 'ci-bars',
+          afterDatasetsDraw: function(chart) {
+            const meta = chart.getDatasetMeta(0);
+            const ctx2 = chart.ctx;
+            ctx2.save();
+            ctx2.strokeStyle = '#1e293b';
+            rows.forEach(function(r, idx) {
+              const bar = meta.data[idx];
+              if (!bar) return;
+              const x = bar.x;
+              const yTop = chart.scales.y.getPixelForValue(r.meanEfficacy + r.ci95);
+              const yBottom = chart.scales.y.getPixelForValue(r.meanEfficacy - r.ci95);
+              ctx2.beginPath();
+              ctx2.moveTo(x, yTop); ctx2.lineTo(x, yBottom);
+              ctx2.moveTo(x - 6, yTop); ctx2.lineTo(x + 6, yTop);
+              ctx2.moveTo(x - 6, yBottom); ctx2.lineTo(x + 6, yBottom);
+              ctx2.stroke();
+            });
+            ctx2.restore();
+          }
+        }]
+      });
+    }
+
+    function renderRadarChart() {
+      const ctx = $('radarChart');
+      if (!ctx || !window.Chart) return;
+      const rows = buildTreatmentAnalytics().filter(function(r) { return r.treatment !== 'Control'; });
+      if (state.charts.radar) state.charts.radar.destroy();
+      state.charts.radar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: rows.map(function(r) { return r.treatment; }),
+          datasets: [{
+            label: 'Efficacy',
+            data: rows.map(function(r) { return r.meanEfficacy; }),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.18)'
+          }, {
+            label: '100 - Phytotoxicity*10',
+            data: rows.map(function(r) { return Math.max(0, 100 - (r.avgPhyto * 10)); }),
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.16)'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } } }
+      });
+    }
+
+    function renderScatterChart() {
+      const ctx = $('scatterChart');
+      if (!ctx || !window.Chart) return;
+      const rows = state.trials.map(function(trial) {
+        const form = getFormulationById(trial.formulation_id);
+        const obs = state.observations.filter(function(o) { return String(o.trial_id) === String(trial.id); });
+        const efficacy = obs.length ? obs.reduce(function(s, o) { return s + (100 - (safeParseNum(o.damage) || 0)); }, 0) / obs.length : 0;
+        return {
+          x: form ? (safeParseNum(form.ingredient_cost_total) || safeParseNum(form.cost) || 0) : 0,
+          y: efficacy,
+          label: trial.name || 'Trial'
+        };
+      }).filter(function(p) { return Number.isFinite(p.x) && Number.isFinite(p.y); });
+      if (state.charts.scatter) state.charts.scatter.destroy();
+      state.charts.scatter = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: [{ label: 'Trial economics', data: rows, backgroundColor: 'rgba(8,145,178,0.6)', borderColor: '#0891b2' }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Formulation cost' } },
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Average efficacy %' } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return (ctx.raw.label || 'Trial') + ': cost ' + getCurrencySymbol() + ctx.raw.x.toFixed(2) + ', efficacy ' + ctx.raw.y.toFixed(1) + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function extractWeatherMetricsFromObservation(obs) {
+      const notes = String(obs.notes || '');
+      const temp = notes.match(/temp(?:erature)?\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const humidity = notes.match(/(?:rh|humidity)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const wind = notes.match(/wind\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+      const parsedDynamic = safeJsonParse(obs.dynamic_json, {}) || {};
+      return {
+        temp: temp ? Number(temp[1]) : safeParseNum(parsedDynamic.temperature),
+        humidity: humidity ? Number(humidity[1]) : safeParseNum(parsedDynamic.humidity),
+        wind: wind ? Number(wind[1]) : safeParseNum(parsedDynamic.wind_speed),
+        efficacy: 100 - (safeParseNum(obs.damage) || 0)
+      };
+    }
+
+    function renderWeatherRegressionChart() {
+      const ctx = $('weatherRegressionChart');
+      const content = $('weatherRegressionContent');
+      if (!ctx || !window.Chart) return;
+      const points = state.observations.map(extractWeatherMetricsFromObservation).filter(function(p) {
+        return Number.isFinite(p.temp) && Number.isFinite(p.efficacy);
+      }).map(function(p) { return { x: p.temp, y: p.efficacy }; });
+      const model = linearRegression(points, false);
+      const line = model ? [
+        { x: Math.min.apply(null, points.map(function(p) { return p.x; })), y: model.predict(Math.min.apply(null, points.map(function(p) { return p.x; }))) },
+        { x: Math.max.apply(null, points.map(function(p) { return p.x; })), y: model.predict(Math.max.apply(null, points.map(function(p) { return p.x; }))) }
+      ] : [];
+      if (state.charts.weatherRegression) state.charts.weatherRegression.destroy();
+      state.charts.weatherRegression = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: [
+          { label: 'Observed pairs', data: points, backgroundColor: 'rgba(59,130,246,0.55)', borderColor: '#2563eb' },
+          { label: 'Regression', data: line, parsing: false, showLine: true, pointRadius: 0, borderColor: '#ef4444', borderWidth: 2 }
+        ] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Temperature (parsed from notes/dynamic JSON)' } },
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Efficacy %' } }
+          }
+        }
+      });
+      if (content) {
+        content.innerHTML = model
+          ? `<div class="form-grid"><div><strong>Slope:</strong> ${model.slope.toFixed(3)}</div><div><strong>R²:</strong> ${model.r2.toFixed(3)}</div><div><strong>p-value:</strong> ${model.pValue.toFixed(4)}</div><div><strong>Samples:</strong> ${model.n}</div></div>`
+          : '<p style="color:var(--text-light);">Add temperature or humidity information in observation notes to enable weather regression.</p>';
+      }
+    }
+
+    function dotProduct(a, b) {
+      return a.reduce(function(s, v, idx) { return s + v * b[idx]; }, 0);
+    }
+
+    function matVec(matrix, vector) {
+      return matrix.map(function(row) { return dotProduct(row, vector); });
+    }
+
+    function normalizeVector(vector) {
+      const mag = Math.sqrt(dotProduct(vector, vector)) || 1;
+      return vector.map(function(v) { return v / mag; });
+    }
+
+    function powerIteration(matrix, iterations) {
+      let vector = normalizeVector(matrix.map(function(_, idx) { return idx === 0 ? 1 : 0.5; }));
+      for (let i = 0; i < (iterations || 25); i++) vector = normalizeVector(matVec(matrix, vector));
+      return vector;
+    }
+
+    function computeTrialPca() {
+      const rows = state.trials.map(function(trial) {
+        const form = getFormulationById(trial.formulation_id);
+        const obs = state.observations.filter(function(o) { return String(o.trial_id) === String(trial.id); });
+        const damages = obs.map(function(o) { return safeParseNum(o.damage); }).filter(function(v) { return v !== null; });
+        const meanDamage = damages.length ? damages.reduce(function(a, b) { return a + b; }, 0) / damages.length : 0;
+        const variance = damages.length > 1 ? damages.reduce(function(s, v) { return s + Math.pow(v - meanDamage, 2); }, 0) / (damages.length - 1) : 0;
+        const sd = Math.sqrt(variance);
+        const cv = meanDamage ? (sd / meanDamage) * 100 : 0;
+        return {
+          trial,
+          features: [
+            obs.length ? 100 - meanDamage : 0,
+            cv,
+            obs.length,
+            form ? (safeParseNum(form.ingredient_cost_total) || safeParseNum(form.cost) || 0) : 0
+          ]
+        };
+      }).filter(function(r) { return r.features.some(function(v) { return Number.isFinite(v); }); });
+      if (rows.length < 2) return null;
+      const dim = rows[0].features.length;
+      const means = Array(dim).fill(0);
+      rows.forEach(function(r) { r.features.forEach(function(v, idx) { means[idx] += v; }); });
+      means.forEach(function(_, idx) { means[idx] /= rows.length; });
+      const stds = Array(dim).fill(0);
+      rows.forEach(function(r) { r.features.forEach(function(v, idx) { stds[idx] += Math.pow(v - means[idx], 2); }); });
+      stds.forEach(function(_, idx) { stds[idx] = Math.sqrt(stds[idx] / Math.max(1, rows.length - 1)) || 1; });
+      const standardized = rows.map(function(r) { return r.features.map(function(v, idx) { return (v - means[idx]) / stds[idx]; }); });
+      const cov = Array(dim).fill(null).map(function() { return Array(dim).fill(0); });
+      standardized.forEach(function(vec) {
+        for (let i = 0; i < dim; i++) for (let j = 0; j < dim; j++) cov[i][j] += vec[i] * vec[j];
+      });
+      for (let i = 0; i < dim; i++) for (let j = 0; j < dim; j++) cov[i][j] /= Math.max(1, standardized.length - 1);
+      const pc1 = powerIteration(cov, 30);
+      const lambda1 = dotProduct(pc1, matVec(cov, pc1));
+      const deflated = cov.map(function(row, i) {
+        return row.map(function(val, j) { return val - lambda1 * pc1[i] * pc1[j]; });
+      });
+      const pc2 = powerIteration(deflated, 30);
+      return {
+        labels: ['Efficacy', 'CV', 'Observation Count', 'Cost'],
+        loadings: { pc1: pc1, pc2: pc2 },
+        scores: rows.map(function(r, idx) {
+          return {
+            label: r.trial.name || ('Trial ' + (idx + 1)),
+            x: dotProduct(standardized[idx], pc1),
+            y: dotProduct(standardized[idx], pc2)
+          };
+        })
+      };
+    }
+
+    function renderPcaChart() {
+      const ctx = $('pcaChart');
+      const summary = $('pcaSummary');
+      if (!ctx || !window.Chart) return;
+      const pca = computeTrialPca();
+      if (state.charts.pca) state.charts.pca.destroy();
+      if (!pca) {
+        if (summary) summary.innerHTML = '<p style="color:var(--text-light);">Need at least two trials with observations to compute PCA.</p>';
+        return;
+      }
+      state.charts.pca = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: [{ label: 'Trial PCA', data: pca.scores, backgroundColor: 'rgba(99,102,241,0.6)', borderColor: '#4f46e5' }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'PC1' } },
+            y: { title: { display: true, text: 'PC2' } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return ctx.raw.label + ' (' + ctx.raw.x.toFixed(2) + ', ' + ctx.raw.y.toFixed(2) + ')'; }
+              }
+            }
+          }
+        }
+      });
+      if (summary) {
+        summary.innerHTML = `
+          <h4 style="margin:0 0 8px;color:var(--primary);">PCA Loadings</h4>
+          <table class="data-table" style="font-size:0.85rem;">
+            <thead><tr><th>Metric</th><th>PC1</th><th>PC2</th></tr></thead>
+            <tbody>
+              ${pca.labels.map(function(label, idx) {
+                return '<tr><td>' + label + '</td><td>' + pca.loadings.pc1[idx].toFixed(3) + '</td><td>' + pca.loadings.pc2[idx].toFixed(3) + '</td></tr>';
+              }).join('')}
+            </tbody>
+          </table>
+          <p style="margin-top:8px;color:var(--text-light);font-size:0.85rem;">PC1 separates high-efficacy vs high-CV / high-cost trials. PC2 highlights orthogonal trial differences for multi-trial comparison.</p>
+        `;
+      }
+    }
+
+    window.exportChartImage = function(canvasId) {
+      const canvas = $(canvasId);
+      if (!canvas) { showToast('Chart not found', 'error'); return; }
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = canvasId + '-' + new Date().toISOString().split('T')[0] + '.png';
+      a.click();
+    };
+
+    window.exportChartPdf = function(canvasId, title) {
+      const canvas = $(canvasId);
+      if (!canvas || !window.jspdf) { showToast('Chart export unavailable', 'error'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l', 'mm', 'a4');
+      doc.setFontSize(16);
+      doc.text(title || canvasId, 14, 16);
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 24, 270, 150);
+      doc.save((title || canvasId).replace(/\s+/g, '_') + '.pdf');
+    };
+
+    window.exportTrialSummaryCharts = function(format) {
+      const ids = ['comparisonChart', 'dayWiseChart', 'doseResponseChart', 'varianceChart', 'radarChart', 'scatterChart'];
+      if (format === 'png') {
+        ids.forEach(function(id, idx) {
+          setTimeout(function() { window.exportChartImage(id); }, idx * 200);
+        });
+        showToast('Chart PNG exports started', 'success');
+        return;
+      }
+      if (!window.jspdf) { showToast('PDF export unavailable', 'error'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l', 'mm', 'a4');
+      let first = true;
+      ids.forEach(function(id) {
+        const canvas = $(id);
+        if (!canvas) return;
+        if (!first) doc.addPage();
+        first = false;
+        doc.setFontSize(14);
+        doc.text(id, 14, 14);
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 20, 270, 150);
+      });
+      doc.save('Trial_Summary_Charts.pdf');
+      showToast('Chart PDF exported', 'success');
+    };
+
+    window.suggestReplications = function() {
+      const cv = safeParseNum($('designPilotCv')?.value) || 0;
+      const sd = safeParseNum($('designPilotSd')?.value) || 0;
+      const precision = Math.max(1, safeParseNum($('designTargetPrecision')?.value) || 10);
+      const recommended = Math.max(2, Math.ceil(Math.pow((1.96 * Math.max(cv, sd || 1)) / precision, 2)));
+      const target = $('designSuggestion');
+      if (target) target.innerHTML = `<p><strong>Suggested replications:</strong> ${recommended} based on pilot CV ${cv.toFixed(1)}% and SD ${sd.toFixed(1)}.</p>`;
+      if ($('designReplications')) $('designReplications').value = String(recommended);
+    };
+
+    window.generateTrialDesign = function() {
+      const designType = $('designType')?.value || 'CRD';
+      const treatmentCount = Math.max(2, safeParseNum($('designTreatments')?.value) || 6);
+      const replications = Math.max(2, safeParseNum($('designReplications')?.value) || 4);
+      const treatments = Array.from({ length: treatmentCount }, function(_, idx) {
+        return idx === 0 ? 'Control' : 'T' + idx;
+      });
+      const shuffle = function(arr) {
+        const copy = arr.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = copy[i]; copy[i] = copy[j]; copy[j] = tmp;
+        }
+        return copy;
+      };
+      const layout = [];
+      if (designType === 'RCBD') {
+        for (let rep = 1; rep <= replications; rep++) layout.push({ block: rep, plots: shuffle(treatments) });
+      } else {
+        const plots = [];
+        for (let rep = 1; rep <= replications; rep++) treatments.forEach(function(t) { plots.push(t + ' (R' + rep + ')'); });
+        layout.push({ block: 'CRD Layout', plots: shuffle(plots) });
+      }
+      const target = $('designLayout');
+      if (!target) return;
+      target.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>${designType === 'RCBD' ? 'Block' : 'Layout'}</th><th>Plot Order</th></tr></thead>
+          <tbody>
+            ${layout.map(function(row) {
+              return '<tr><td><strong>' + row.block + '</strong></td><td>' + row.plots.map(function(plot) { return '<span style="display:inline-block;padding:3px 8px;margin:2px;border:1px solid var(--border);border-radius:6px;background:var(--bg);">' + plot + '</span>'; }).join('') + '</td></tr>';
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    };
 
     // ===== PEST / DISEASE REFERENCE LIBRARY =====
     // Static fallback data (matches backend PEST_SEED_DATA)
@@ -5386,14 +6155,15 @@
         return;
       }
       try {
-        const labels = ['formulations', 'trials', 'observations', 'ingredients', 'dbinfo', 'pestlibrary'];
+        const labels = ['formulations', 'trials', 'observations', 'ingredients', 'dbinfo', 'pestlibrary', 'harvestrecords'];
         const settled = await Promise.allSettled([
           ajax('listformulations'),
           ajax('listtrials'),
           ajax('listobservations'),
           ajax('listingredients'),
           ajax('dbinfo'),
-          ajax('listpestlibrary')
+          ajax('listpestlibrary'),
+          ajax('listharvestrecords')
         ]);
 
         const data = {};
@@ -5413,10 +6183,12 @@
         if (Array.isArray(data.trials)) state.trials = data.trials;
         if (Array.isArray(data.observations)) state.observations = data.observations;
         if (Array.isArray(data.ingredients)) state.ingredients = data.ingredients;
+        if (Array.isArray(data.harvestrecords)) state.harvestRecords = data.harvestrecords;
         if (Array.isArray(data.pestlibrary) && data.pestlibrary.length) {
           _pestLibraryCache = data.pestlibrary;
         }
         persistIngredients();
+        localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
         lastDbInfo = data.dbinfo && typeof data.dbinfo === 'object' ? data.dbinfo : null;
 
         const coreLoaded = [data.formulations, data.trials, data.observations, data.ingredients]
@@ -5426,14 +6198,7 @@
         state.lastSyncError = errors.length ? errors.join(' | ') : '';
         setConnectivityStatus();
         
-        renderFormulations();
-        renderTrials();
-        renderIngredientMaster();
-        renderObservations();
-        renderDataHealth();
-        if ($('dashboard').classList.contains('active')) renderDashboard();
-        if ($('fieldmap').classList.contains('active')) renderFieldMap();
-        if ($('reports').classList.contains('active')) renderReportPreview();
+        renderAllLocal();
         
         if (state.backendConnected) {
           showToast(errors.length ? 'Data synced with partial API warnings' : 'Data synced successfully', errors.length ? 'warning' : 'success');
@@ -5742,6 +6507,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         formulations: state.formulations,
         trials: state.trials,
         observations: state.observations,
+        harvestRecords: state.harvestRecords,
         syncQueue: state.syncQueue,
         exportedAt: new Date().toISOString()
       };
@@ -5759,6 +6525,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
     window.clearSyncQueueOnly = () => {
       state.syncQueue = [];
       localStorage.setItem('agri-sync-queue', JSON.stringify(state.syncQueue));
+      persistOfflineSnapshot();
       updateQueueUI();
       renderDataHealth();
       showToast('Pending sync queue cleared', 'success');
@@ -5796,6 +6563,10 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
 
         if (Array.isArray(data.observations)) {
           data.observations.forEach(item => tasks.push(ajax('upsertobservation', item)));
+        }
+
+        if (Array.isArray(data.harvestRecords)) {
+          data.harvestRecords.forEach(item => tasks.push(ajax('addharvestrecord', item)));
         }
 
         if (data.settings && typeof data.settings === 'object') {
@@ -5901,6 +6672,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         ? state.trials.filter(t => String(t.id) === String(filterTrialId))
         : state.trials;
       return trials.map(trial => {
+        const formulation = getFormulationById(trial.formulation_id);
         const trialObs = state.observations.filter(o => o.trial_id == trial.id);
         const damages = trialObs.map(o => safeParseNum(o.damage)).filter(v => v !== null);
         const meanDamage = damages.length ? (damages.reduce((a,b) => a+b, 0) / damages.length) : 0;
@@ -5913,7 +6685,12 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
           type: trial.type || '-',
           crop: trial.crop_type || '-',
           cropStage: trial.crop_stage || '-',
-          formulation: trial.formulation || '-',
+          formulation: formulation ? formulation.name : '-',
+          formulationType: formulation ? formulation.type : '-',
+          ld50: formulation ? (formulation.ld50 || '-') : '-',
+          persistence: formulation ? (formulation.persistence || '-') : '-',
+          safetyPeriod: formulation ? (formulation.safety_period || '-') : '-',
+          pestType: formulation ? (formulation.pest_type || formulation.disease_type || '-') : '-',
           location: trial.location || '-',
           gps: `${formatCoordinate(trial.latitude)}, ${formatCoordinate(trial.longitude)}`,
           investigator: trial.investigator || '-',
@@ -6137,7 +6914,50 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
     window.generateTrialSummaryReport = (trialId) => {
       const rows = buildReportRows(trialId || null);
       if (!rows.length) { showToast('No trial data available', 'error'); return; }
-      generatePdfReport('Trial Summary Report', 'Consolidated trial performance overview with investigator and spray records.', rows);
+      renderComparisonChart();
+      renderAdvancedVisualizations();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const now = new Date();
+      const anova = computeANOVA();
+
+      doc.setFillColor(5, 150, 105);
+      doc.rect(0, 0, 210, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text('Trial Summary Report', 14, 16);
+      doc.setFontSize(9);
+      doc.text('GPS, efficacy graphs, ANOVA summary, and trial-level performance tables', 14, 23);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Generated: ${now.toLocaleString()}`, 14, 34);
+
+      doc.autoTable({
+        startY: 38,
+        head: [['Trial', 'Formulation', 'Location', 'GPS', 'Crop', 'Obs', 'Efficacy%']],
+        body: rows.map(function(r) {
+          return [r.trial, r.formulation, r.location, r.gps, `${r.crop} / ${r.cropStage}`, String(r.obsCount), r.efficacy];
+        }),
+        styles: { fontSize: 7.5, cellPadding: 1.8 },
+        headStyles: { fillColor: [5, 150, 105], textColor: 255 }
+      });
+
+      let y = (doc.lastAutoTable?.finalY || 40) + 8;
+      doc.setFontSize(10);
+      doc.text(`ANOVA: ${anova ? ('F=' + anova.fValue + ', p=' + anova.pValue + (anova.significant ? ' (significant)' : ' (not significant)')) : 'Insufficient data'}`, 14, y);
+      y += 6;
+      doc.text(`Average efficacy: ${computeAggregateStats().avgEfficacy}% | Trials covered: ${rows.length}`, 14, y);
+
+      const chartIds = ['comparisonChart', 'dayWiseChart', 'doseResponseChart', 'scatterChart'];
+      chartIds.forEach(function(id) {
+        const canvas = $(id);
+        if (!canvas) return;
+        doc.addPage();
+        doc.setFontSize(13);
+        doc.text(id, 14, 16);
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 24, 190, 105);
+      });
+
+      doc.save(`Trial_Summary_Report_${Date.now()}.pdf`);
       showToast('Trial Summary report generated', 'success');
     };
 
@@ -6198,8 +7018,8 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         curY += 4;
         doc.autoTable({
           startY: curY,
-          head: [['Code', 'Treatment / Dosage Description', 'Spray Dates', 'Formulation']],
-          body: labelEntries.map(([k, v]) => [k, v, r.sprayDates, r.formulation]),
+          head: [['Code', 'Treatment / Dosage Description', 'Spray Dates', 'Formulation', 'LD50', 'Residue / Safety', 'Target Pest / Disease']],
+          body: labelEntries.map(([k, v]) => [k, v, r.sprayDates, r.formulation, r.ld50, `${r.persistence} d / ${r.safetyPeriod} d`, r.pestType]),
           styles: { fontSize: 7.5, cellPadding: 1.5 },
           headStyles: { fillColor: [30, 64, 175], textColor: 255 },
           margin: { left: 14, right: 14 }
@@ -7101,10 +7921,10 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
 
     // ===== EXPORT FUNCTIONS =====
     window.exportAsCSV = () => {
-      const rows = [['Trial', 'Date', 'DAA', 'Treatment', 'Damage%', 'Pest Count', 'Phyto', 'Disease', 'Efficacy', 'Notes']];
+      const rows = [['Trial', 'Date', 'DAA', 'Treatment', 'Damage%', 'Pest Count', 'Phyto', 'Disease', 'Efficacy', 'Crop', 'Rotation', 'Notes']];
       state.observations.forEach(o => {
         const trial = state.trials.find(t => t.id == o.trial_id);
-        rows.push([trial?.name || '', o.date, o.daa || 0, o.treatment || 'Control', o.damage, o.pest_count, o.phyto, o.disease_severity || '', o.efficacy_rating || '', o.notes]);
+        rows.push([trial?.name || '', o.date, o.daa || 0, o.treatment || 'Control', o.damage, o.pest_count, o.phyto, o.disease_severity || '', o.efficacy_rating || '', o.crop_photo || '', o.rotation || '', o.notes]);
       });
       const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -7120,6 +7940,8 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         formulations: state.formulations, 
         trials: state.trials, 
         observations: state.observations,
+        harvestRecords: state.harvestRecords,
+        syncQueue: state.syncQueue,
         exportDate: new Date().toISOString()
       };
       const json = JSON.stringify(data, null, 2);
@@ -7150,6 +7972,10 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       yPos += 6;
       doc.text(`Total Observations: ${state.observations.length}`, 20, yPos);
       yPos += 16;
+      doc.text(`Harvest Records: ${state.harvestRecords.length}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Pending Sync Queue: ${state.syncQueue.length}`, 20, yPos);
+      yPos += 10;
       
       const stats = computeAggregateStats();
       doc.text(`Average Efficacy: ${stats.avgEfficacy}%`, 20, yPos);
@@ -7165,18 +7991,35 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         yPos += 6;
       });
       
+      const chart = $('comparisonChart');
+      if (chart) {
+        doc.addPage();
+        doc.text('Treatment Comparison Chart', 20, 20);
+        doc.addImage(chart.toDataURL('image/png'), 'PNG', 12, 28, 185, 90);
+      }
+
       doc.save(`report-${new Date().toISOString().split('T')[0]}.pdf`);
       showToast('PDF exported', 'success');
     };
 
     window.exportAsXLSX = () => {
-      // Simplified XLSX export (requires external library like SheetJS)
-      // For now, use CSV as alternative
-      showToast('Excel export coming soon - use CSV for now', 'info');
+      if (!window.XLSX) {
+        showToast('XLSX library not loaded', 'error');
+        return;
+      }
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(state.formulations), 'Formulations');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(state.trials), 'Trials');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(state.observations), 'Observations');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(state.ingredients), 'Ingredients');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(state.harvestRecords), 'Harvest');
+      XLSX.writeFile(workbook, `agri-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('XLSX exported', 'success');
     };
 
     // ===== INITIALIZATION =====
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initOfflineCache();
       $('scriptUrl').value = state.scriptUrl;
       localStorage.setItem('agri-script-url', state.scriptUrl || '');
 
@@ -7250,6 +8093,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
           };
           state.harvestRecords.push(record);
           localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
+          persistOfflineSnapshot();
           renderHarvestTable();
           // Sync to backend
           if (state.scriptUrl) {
@@ -7308,15 +8152,51 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
             google_drive_folder_id: state.settings.googleDriveFolderId
           });
 
+          if (state.settings.googleDriveFolderId) {
+            try {
+              await ajax('setupweeklybackup', { folderId: state.settings.googleDriveFolderId });
+              updateBackupStatus('Weekly Drive backup trigger is active.', false);
+            } catch (backupErr) {
+              updateBackupStatus('Settings saved, but weekly backup trigger failed: ' + backupErr.message, true);
+            }
+          }
+
           const db = await ajax('dbinfo');
           lastDbInfo = db;
           showToast('Configuration saved and backend verified', 'success');
           renderDataHealth();
           await refreshAll();
         } catch (err) {
+          updateBackupStatus('Settings saved locally, backend sync failed.', true);
           showToast('Settings saved locally, but backend failed: ' + err.message, 'error');
         }
       };
+
+      if ($('btnBackupNow')) {
+        $('btnBackupNow').onclick = async () => {
+          try {
+            const res = await ajax('backupnow', { folderId: state.settings.googleDriveFolderId || '' });
+            updateBackupStatus('Backup created: ' + (res.fileName || 'JSON file') + ' in ' + (res.folderName || 'Drive folder'), false);
+            showToast('Drive backup created', 'success');
+          } catch (err) {
+            updateBackupStatus('Backup failed: ' + err.message, true);
+            showToast('Backup failed: ' + err.message, 'error');
+          }
+        };
+      }
+
+      if ($('btnSetupWeeklyBackup')) {
+        $('btnSetupWeeklyBackup').onclick = async () => {
+          try {
+            const res = await ajax('setupweeklybackup', { folderId: state.settings.googleDriveFolderId || '' });
+            updateBackupStatus((res.message || 'Weekly backup configured') + ' → ' + (res.folderName || 'Drive folder'), false);
+            showToast('Weekly backup configured', 'success');
+          } catch (err) {
+            updateBackupStatus('Weekly backup setup failed: ' + err.message, true);
+            showToast('Weekly backup setup failed: ' + err.message, 'error');
+          }
+        };
+      }
 
       $('btnCaptureGps').onclick = captureTrialLocation;
 
@@ -7380,15 +8260,11 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       $('settingGoogleDriveFolderUrl').value = state.settings.googleDriveFolderUrl || '';
       $('settingGoogleSheetIdPreview').textContent = state.settings.googleSheetId || extractGoogleSheetId(state.settings.googleSheetUrl || '') || '-';
       $('settingGoogleDriveFolderIdPreview').textContent = state.settings.googleDriveFolderId || extractGoogleDriveFolderId(state.settings.googleDriveFolderUrl || '') || '-';
+      updateBackupStatus(state.settings.googleDriveFolderId ? 'Drive folder configured. Use Backup Now or Setup Weekly Backup.' : 'Drive folder not configured yet.', false);
 
-      renderIngredientMaster();
+      renderAllLocal();
       renderFormIngredientDraft();
-      renderDataHealth();
       setConnectivityStatus();
-      populateReportTemplateTrials();
-      populateImageTrialFilter();
-      renderImageGallery();
-      updateCompareView();
       renderDynamicObservationFields();
 
       if (state.scriptUrl) {
