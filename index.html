@@ -1429,6 +1429,23 @@
               <tbody></tbody>
             </table>
           </div>
+
+          <!-- PEST / DISEASE REFERENCE LIBRARY -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <h3 style="margin:0;">🦗 Pest &amp; Disease Reference Library</h3>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="pestLibSearch" placeholder="Search pest, disease or crop…" style="border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:0.88rem;width:220px;" oninput="renderPestLibrary()">
+                <select id="pestLibCategory" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:0.88rem;" onchange="renderPestLibrary()">
+                  <option value="">All Categories</option>
+                  <option value="Pest">Pest</option>
+                  <option value="Disease">Disease</option>
+                  <option value="Deficiency">Deficiency</option>
+                </select>
+              </div>
+            </div>
+            <div id="pestLibTable" style="margin-top:12px;overflow-x:auto;"></div>
+          </div>
         </section>
 
         <!-- ANALYTICS -->
@@ -1501,6 +1518,17 @@
             </div>
             <h4 style="margin:12px 0 6px;color:var(--text-light);font-size:0.86rem;">Treatment-Day Heatmap</h4>
             <div id="heatmapContainer"></div>
+          </div>
+
+          <!-- FINANCIAL DASHBOARD -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <h3 style="margin:0;">💰 Financial Dashboard</h3>
+              <select id="financialTrialFilter" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:0.88rem;" onchange="renderFinancialDashboard()">
+                <option value="">All Trials</option>
+              </select>
+            </div>
+            <div id="financialDashboard" style="margin-top:12px;"></div>
           </div>
         </section>
 
@@ -2143,8 +2171,10 @@
       if ($('dashboard').classList.contains('active')) renderDashboard();
       if ($('fieldmap').classList.contains('active')) renderFieldMap();
       if ($('reports').classList.contains('active')) renderReportPreview();
-      if ($('analytics').classList.contains('active')) { renderStats(); renderTukeyTable(); renderCategoryEfficacy(); renderComparisonChart(); renderAdvancedVisualizations(); }
+      if ($('analytics').classList.contains('active')) { renderStats(); renderTukeyTable(); renderCategoryEfficacy(); renderComparisonChart(); renderAdvancedVisualizations(); renderFinancialDashboard(); }
+      if ($('observations').classList.contains('active')) renderPestLibrary();
       if ($('auditlog').classList.contains('active')) renderAuditLog();
+      populateFinancialTrialFilter();
       renderDataHealth();
       renderAlertPanel();
     }
@@ -3919,6 +3949,10 @@
         renderCategoryEfficacy();
         renderComparisonChart();
         renderAdvancedVisualizations();
+        renderFinancialDashboard();
+      }
+      if (tabName === 'observations') {
+        renderPestLibrary();
       }
       if (tabName === 'auditlog') {
         renderAuditLog();
@@ -4407,6 +4441,230 @@
       });
     }
 
+    // ===== PEST / DISEASE REFERENCE LIBRARY =====
+    // Static fallback data (matches backend PEST_SEED_DATA)
+    const PEST_LIBRARY = [
+      { name: 'Aphids', category: 'Pest', crops: 'Cotton, Mustard, Wheat, Vegetables', eil: '20-30 per plant shoot', action_point: 'Spray at 15-20 aphids/leaf', control: 'Imidacloprid / Dimethoate / Neem oil' },
+      { name: 'Whitefly', category: 'Pest', crops: 'Cotton, Tomato, Chilli, Brinjal', eil: '6-8 adults/leaf', action_point: 'Yellow sticky traps + spray threshold', control: 'Thiamethoxam / Spiromesifen / NSKE 5%' },
+      { name: 'Thrips', category: 'Pest', crops: 'Cotton, Onion, Chilli, Groundnut', eil: '5-10 thrips/leaf or flower', action_point: 'Spray at ETL before flowering', control: 'Spinosad / Fipronil / Profenofos' },
+      { name: 'Jassids (Leafhopper)', category: 'Pest', crops: 'Cotton, Groundnut, Brinjal', eil: '2-3 nymphs/leaf', action_point: 'Spray at first flush of crop', control: 'Imidacloprid / Acephate / Quinalphos' },
+      { name: 'Bollworm Complex', category: 'Pest', crops: 'Cotton', eil: '1 larva/plant or 10% damage', action_point: 'Spray at first egg mass appearance', control: 'Chlorpyrifos / Indoxacarb / Emamectin Benzoate' },
+      { name: 'Stem Borer', category: 'Pest', crops: 'Rice, Sugarcane, Maize, Sorghum', eil: '5% deadheart or 10% whitear', action_point: 'Apply Carbofuran granules at transplant', control: 'Carbofuran 3G / Chlorpyrifos / Chlorantraniliprole' },
+      { name: 'Brown Plant Hopper', category: 'Pest', crops: 'Rice', eil: '5-10 hoppers/hill', action_point: 'Spray at seedling/tillering stage', control: 'Buprofezin / Etofenprox / Thiamethoxam' },
+      { name: 'Helicoverpa (Pod Borer)', category: 'Pest', crops: 'Chickpea, Pigeonpea, Cotton, Tomato', eil: '1 larva/plant or 10-15% pod damage', action_point: 'Pheromone trap-based monitoring', control: 'Emamectin Benzoate / Indoxacarb / SpNPV' },
+      { name: 'Spodoptera (Fall Armyworm)', category: 'Pest', crops: 'Maize, Rice, Sorghum, Groundnut', eil: '20% plants with leaf damage', action_point: 'Whorl application of sand + ash', control: 'Spinetoram / Chlorantraniliprole / Emamectin Benzoate' },
+      { name: 'Red Spider Mite', category: 'Pest', crops: 'Cotton, Vegetables, Cucurbits', eil: '5-10 mites/leaf', action_point: 'Spray underside of leaves, avoid broad-spectrum', control: 'Spiromesifen / Abamectin / Propargite' },
+      { name: 'Leaf Miner', category: 'Pest', crops: 'Tomato, Potato, Beans', eil: '25-30% leaf mining', action_point: 'Yellow sticky traps monitoring', control: 'Cyromazine / Abamectin / Spinosad' },
+      { name: 'Mealy Bug', category: 'Pest', crops: 'Cotton, Pomegranate, Papaya', eil: '10% infested plants', action_point: 'Tree banding + natural enemy conservation', control: 'Buprofezin / Clothianidin / Profenofos' },
+      { name: 'Diamondback Moth', category: 'Pest', crops: 'Cabbage, Broccoli, Cauliflower', eil: '1-2 larvae/plant or 5% leaf damage', action_point: 'Pheromone traps + crop rotation', control: 'Spinosad / Chlorfenapyr / Bt Kurstaki' },
+      { name: 'Rice Blast', category: 'Disease', crops: 'Rice', eil: '1-2% leaf blast lesions', action_point: 'Spray at seedling + panicle initiation', control: 'Tricyclazole / Isoprothiolane / Kasugamycin' },
+      { name: 'Powdery Mildew', category: 'Disease', crops: 'Wheat, Cucurbits, Grapes, Peas', eil: '10% leaf area coverage', action_point: 'Spray at disease onset in cool/humid conditions', control: 'Tebuconazole / Hexaconazole / Sulphur' },
+      { name: 'Downy Mildew', category: 'Disease', crops: 'Pearl Millet, Grapes, Cucurbits, Onion', eil: '5-10% plant incidence', action_point: 'Seed treatment + spray at seedling stage', control: 'Metalaxyl-M / Cymoxanil + Mancozeb / Dimethomorph' },
+      { name: 'Early Blight', category: 'Disease', crops: 'Tomato, Potato', eil: '5% foliage infected', action_point: 'Spray at first symptom appearance', control: 'Mancozeb / Chlorothalonil / Azoxystrobin' },
+      { name: 'Late Blight', category: 'Disease', crops: 'Tomato, Potato', eil: '1% plant incidence / high humidity >85%', action_point: 'Prophylactic sprays in cool humid weather', control: 'Cymoxanil + Mancozeb / Ametoctradin / Fluopicolide' },
+      { name: 'Cercospora Leaf Spot', category: 'Disease', crops: 'Groundnut, Sugarbeet, Banana', eil: '5% leaf damage', action_point: 'Spray at 30 DAS + 45 DAS', control: 'Tebuconazole / Carbendazim / Chlorothalonil' },
+      { name: 'Fusarium Wilt', category: 'Disease', crops: 'Chickpea, Banana, Cotton, Tomato', eil: '1-5% wilting plants', action_point: 'Soil drench + resistant varieties', control: 'Carbendazim / Thiophanate-methyl / Trichoderma' },
+      { name: 'Bacterial Leaf Blight', category: 'Disease', crops: 'Rice', eil: '5-8% leaf area covered', action_point: 'Avoid flood irrigation, drain fields', control: 'Copper oxychloride / Streptocycline / Kasugamycin' },
+      { name: 'Anthracnose', category: 'Disease', crops: 'Chilli, Grapes, Bean, Mango', eil: '10% fruit/leaf incidence', action_point: 'Spray at flower initiation stage', control: 'Carbendazim / Tebuconazole / Azoxystrobin' },
+      { name: 'Nitrogen Deficiency', category: 'Deficiency', crops: 'All crops', eil: 'Yellowing of older leaves', action_point: 'Soil/foliar application of urea', control: 'Urea (foliar 2%) / Soil N at split doses' },
+      { name: 'Iron Chlorosis', category: 'Deficiency', crops: 'Rice, Paddy, Groundnut, Soybean', eil: 'Interveinal yellowing on young leaves', action_point: 'Foliar spray of FeSO4 0.5%', control: 'FeSO4 drench / EDTA-Fe foliar / Acidification' },
+      { name: 'Zinc Deficiency', category: 'Deficiency', crops: 'Rice, Maize, Wheat', eil: 'Brown/white patches on young leaves', action_point: 'Apply ZnSO4 25 kg/ha at transplant', control: 'ZnSO4 soil / Chelated Zn foliar 0.5%' }
+    ];
+
+    // Merged library: backend entries (if loaded) merged over static fallback
+    let _pestLibraryCache = null;
+
+    async function loadPestLibraryFromBackend() {
+      if (!state.backendConnected) return;
+      try {
+        const rows = await ajax('listpestlibrary', {});
+        if (Array.isArray(rows) && rows.length) {
+          _pestLibraryCache = rows;
+          renderPestLibrary();
+        }
+      } catch (_) { /* offline — static data used */ }
+    }
+
+    function getPestLibraryData() {
+      // Normalise field name: backend uses action_point, static uses action_point (already aligned)
+      return _pestLibraryCache || PEST_LIBRARY;
+    }
+
+    function renderPestLibrary() {
+      const el = $('pestLibTable');
+      if (!el) return;
+      const q = (($('pestLibSearch') && $('pestLibSearch').value) || '').toLowerCase().trim();
+      const cat = ($('pestLibCategory') && $('pestLibCategory').value) || '';
+      const source = getPestLibraryData();
+      const filtered = source.filter(function(p) {
+        const ap = p.action_point || p.action || '';
+        const matchQ = !q || (p.name || '').toLowerCase().includes(q) || (p.crops || '').toLowerCase().includes(q) || (p.control || '').toLowerCase().includes(q);
+        const matchCat = !cat || p.category === cat;
+        return matchQ && matchCat;
+      });
+      if (!filtered.length) {
+        el.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">No matching pests/diseases found.</p>';
+        return;
+      }
+      const catBadge = { Pest: 'badge-danger', Disease: 'badge-warning', Deficiency: 'badge-info' };
+      const isBackend = !!_pestLibraryCache;
+      el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:0.78rem;color:var(--text-light);">${isBackend ? '🔗 Loaded from Google Sheet' : '📋 Offline / static data'} · ${filtered.length} of ${source.length} entries</span>
+          ${isBackend ? `<button class="btn-secondary" style="font-size:0.78rem;padding:4px 10px;" onclick="window.openAddPestModal()">+ Add Custom</button>` : ''}
+        </div>
+        <table class="data-table" style="font-size:0.83rem;">
+          <thead><tr><th>Name</th><th>Type</th><th>Affected Crops</th><th>EIL / Threshold</th><th>Action Point</th><th>Recommended Control</th>${isBackend ? '<th></th>' : ''}</tr></thead>
+          <tbody>
+            ${filtered.map(function(p) {
+              const ap = p.action_point || p.action || '';
+              return `<tr>
+                <td><strong>${p.name}</strong>${p.custom ? ' <span class="badge badge-info" style="font-size:0.7rem;">Custom</span>' : ''}</td>
+                <td><span class="badge ${catBadge[p.category] || 'badge-info'}">${p.category}</span></td>
+                <td style="color:var(--text-light);">${p.crops}</td>
+                <td>${p.eil}</td>
+                <td>${ap}</td>
+                <td style="color:var(--primary);">${p.control}</td>
+                ${isBackend && p.custom ? `<td><button class="btn-danger" style="font-size:0.75rem;padding:2px 8px;" onclick="window.deletePestEntry('${p.id}')">Del</button></td>` : (isBackend ? '<td></td>' : '')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="margin:8px 0 0;font-size:0.78rem;color:var(--text-light);">📌 EIL = Economic Injury Level | Thresholds are general guidelines; verify with local agricultural extension.</p>
+      `;
+    }
+
+    window.deletePestEntry = async function(id) {
+      if (!confirm('Delete this pest/disease entry?')) return;
+      try {
+        await ajax('deletepestlibrary', { id: id });
+        _pestLibraryCache = (_pestLibraryCache || []).filter(function(p) { return String(p.id) !== String(id); });
+        renderPestLibrary();
+        showToast('Entry deleted', 'success');
+      } catch (err) {
+        showToast('Delete failed: ' + err.message, 'error');
+      }
+    };
+
+    window.openAddPestModal = function() {
+      const name = prompt('Pest/Disease name:');
+      if (!name) return;
+      const category = prompt('Category (Pest / Disease / Deficiency):', 'Pest');
+      if (!category) return;
+      const crops = prompt('Affected crops:') || '';
+      const eil = prompt('EIL / Threshold:') || '';
+      const action_point = prompt('Action point:') || '';
+      const control = prompt('Recommended control:') || '';
+      ajax('addpestlibrary', { name, category, crops, eil, action_point, control, custom: true })
+        .then(function(saved) {
+          if (!_pestLibraryCache) _pestLibraryCache = [...PEST_LIBRARY];
+          _pestLibraryCache.push(saved);
+          renderPestLibrary();
+          showToast('Custom entry added to Google Sheet', 'success');
+        })
+        .catch(function(err) { showToast('Add failed: ' + err.message, 'error'); });
+    };
+
+    // ===== FINANCIAL DASHBOARD =====
+    function populateFinancialTrialFilter() {
+      const sel = $('financialTrialFilter');
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All Trials</option>' +
+        state.trials.map(t => `<option value="${t.id}"${t.id === current ? ' selected' : ''}>${t.name}</option>`).join('');
+    }
+
+    function renderFinancialDashboard() {
+      const el = $('financialDashboard');
+      if (!el) return;
+
+      const filterTrialId = $('financialTrialFilter') ? $('financialTrialFilter').value : '';
+      const trials = filterTrialId ? state.trials.filter(t => t.id === filterTrialId) : state.trials;
+
+      if (!trials.length) {
+        el.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">No trials yet. Create trials and link formulations to see financial analysis.</p>';
+        return;
+      }
+
+      const rows = trials.map(function(trial) {
+        const form = state.formulations.find(f => String(f.id) === String(trial.formulation_id));
+        const formCost = form ? (safeParseNum(form.ingredient_cost_total) || safeParseNum(form.cost) || 0) : 0;
+        const trialObs = state.observations.filter(o => o.trial_id === trial.id);
+        const obsCount = trialObs.length;
+
+        // Average efficacy across all observations for this trial
+        const efficacies = trialObs.map(o => 100 - (safeParseNum(o.damage) || 0));
+        const avgEfficacy = efficacies.length ? efficacies.reduce((a, b) => a + b, 0) / efficacies.length : null;
+
+        // Best treatment analysis
+        const byTreatment = {};
+        trialObs.forEach(function(o) {
+          const t = String(o.treatment || 'Control');
+          if (!byTreatment[t]) byTreatment[t] = [];
+          byTreatment[t].push(100 - (safeParseNum(o.damage) || 0));
+        });
+        let bestTreatment = '-', bestEff = 0;
+        Object.keys(byTreatment).forEach(function(t) {
+          const avg = byTreatment[t].reduce((a, b) => a + b, 0) / byTreatment[t].length;
+          if (avg > bestEff) { bestEff = avg; bestTreatment = t; }
+        });
+
+        // Cost per observation (proxy for cost per application)
+        const applicationCost = formCost;
+        const roiColor = avgEfficacy !== null ? (avgEfficacy >= 70 ? 'var(--success)' : avgEfficacy >= 40 ? 'var(--warning)' : 'var(--danger)') : 'var(--text-light)';
+
+        return { trial, form, formCost, obsCount, avgEfficacy, bestTreatment, bestEff: bestEff.toFixed(1), applicationCost, roiColor };
+      });
+
+      const totalCost = rows.reduce((s, r) => s + r.applicationCost, 0);
+      const totalObs = rows.reduce((s, r) => s + r.obsCount, 0);
+      const overallAvgEfficacy = (function() {
+        const all = state.observations.filter(o => filterTrialId ? o.trial_id === filterTrialId : true).map(o => 100 - (safeParseNum(o.damage) || 0));
+        return all.length ? (all.reduce((a, b) => a + b, 0) / all.length) : null;
+      })();
+
+      el.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:1.6rem;font-weight:700;color:var(--primary);">₹${totalCost.toFixed(0)}</div>
+            <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">Total Formulation Cost</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:1.6rem;font-weight:700;color:var(--success);">${totalObs}</div>
+            <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">Total Observations</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:1.6rem;font-weight:700;color:${overallAvgEfficacy !== null ? (overallAvgEfficacy >= 70 ? 'var(--success)' : 'var(--warning)') : 'var(--text-light)'}">${overallAvgEfficacy !== null ? overallAvgEfficacy.toFixed(1) + '%' : 'N/A'}</div>
+            <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">Avg Efficacy (Damage Basis)</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:1.6rem;font-weight:700;color:var(--primary);">${rows.length}</div>
+            <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px;">Active Trials</div>
+          </div>
+        </div>
+        <table class="data-table" style="font-size:0.83rem;">
+          <thead><tr><th>Trial</th><th>Type</th><th>Formulation</th><th>Form. Cost (₹)</th><th>Observations</th><th>Avg Efficacy</th><th>Best Treatment</th><th>Best Eff %</th><th>Cost / Obs (₹)</th></tr></thead>
+          <tbody>
+            ${rows.map(function(r) {
+              const costPerObs = r.obsCount > 0 ? (r.applicationCost / r.obsCount).toFixed(0) : '-';
+              return `<tr>
+                <td><strong>${r.trial.name}</strong></td>
+                <td><span class="badge badge-info">${r.trial.type || '-'}</span></td>
+                <td>${r.form ? r.form.name : '<span style="color:var(--text-light);">Unlinked</span>'}</td>
+                <td>₹${r.formCost.toFixed(0)}</td>
+                <td>${r.obsCount}</td>
+                <td><span style="color:${r.roiColor};font-weight:600;">${r.avgEfficacy !== null ? r.avgEfficacy.toFixed(1) + '%' : 'No data'}</span></td>
+                <td>${r.bestTreatment}</td>
+                <td>${r.bestTreatment !== '-' ? r.bestEff + '%' : '-'}</td>
+                <td>${costPerObs !== '-' ? '₹' + costPerObs : '-'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="margin:8px 0 0;font-size:0.78rem;color:var(--text-light);">💡 Efficacy = 100% − Average Damage %. Link formulations to trials and enter ingredient costs under <strong>Ingredient Costs</strong> tab for accurate financial data.</p>
+      `;
+    }
+
     function renderHeatmap() {
       const el = $('heatmapContainer');
       if (!el) return;
@@ -4554,13 +4812,14 @@
         return;
       }
       try {
-        const labels = ['formulations', 'trials', 'observations', 'ingredients', 'dbinfo'];
+        const labels = ['formulations', 'trials', 'observations', 'ingredients', 'dbinfo', 'pestlibrary'];
         const settled = await Promise.allSettled([
           ajax('listformulations'),
           ajax('listtrials'),
           ajax('listobservations'),
           ajax('listingredients'),
-          ajax('dbinfo')
+          ajax('dbinfo'),
+          ajax('listpestlibrary')
         ]);
 
         const data = {};
@@ -4580,6 +4839,9 @@
         if (Array.isArray(data.trials)) state.trials = data.trials;
         if (Array.isArray(data.observations)) state.observations = data.observations;
         if (Array.isArray(data.ingredients)) state.ingredients = data.ingredients;
+        if (Array.isArray(data.pestlibrary) && data.pestlibrary.length) {
+          _pestLibraryCache = data.pestlibrary;
+        }
         persistIngredients();
         lastDbInfo = data.dbinfo && typeof data.dbinfo === 'object' ? data.dbinfo : null;
 
