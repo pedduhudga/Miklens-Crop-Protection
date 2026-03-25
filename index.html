@@ -4664,6 +4664,11 @@
       state.harvestRecords = state.harvestRecords.filter(h => String(h.id) !== String(id));
       localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
       renderHarvestTable();
+      if (state.scriptUrl) {
+        ajax('deleteharvestrecord', { id }).catch(() => {
+          queueForSync('deleteharvestrecord', { id });
+        });
+      }
       showToast('Harvest record deleted', 'info');
     };
 
@@ -7220,11 +7225,11 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
             trial_id: trialId,
             date: date,
             crop: $('harvCrop').value.trim(),
-            yield: safeParseNum($('harvYield').value),
+            yield_amount: safeParseNum($('harvYield').value),
             yield_unit: $('harvYieldUnit').value,
-            grade: $('harvGrade').value,
-            moisture: safeParseNum($('harvMoisture').value),
-            grain_weight: safeParseNum($('harvGrainWeight').value),
+            quality_grade: $('harvGrade').value,
+            moisture_pct: safeParseNum($('harvMoisture').value),
+            grain_weight_1000: safeParseNum($('harvGrainWeight').value),
             plot_size: safeParseNum($('harvPlotSize').value),
             notes: $('harvNotes').value.trim(),
             created_at: new Date().toISOString()
@@ -7232,6 +7237,12 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
           state.harvestRecords.push(record);
           localStorage.setItem('agri-harvest', JSON.stringify(state.harvestRecords));
           renderHarvestTable();
+          // Sync to backend
+          if (state.scriptUrl) {
+            ajax('addharvestrecord', record).catch(() => {
+              queueForSync('addharvestrecord', record);
+            });
+          }
           // Reset form
           ['harvDate','harvCrop','harvYield','harvGrainWeight','harvPlotSize','harvMoisture','harvNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
           $('harvGrade').value = '';
