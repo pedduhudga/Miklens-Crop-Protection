@@ -1156,15 +1156,7 @@
             <canvas id="categoryChart" style="max-height: 300px;"></canvas>
           </div>
 
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <h3 style="margin:0;">🔔 Observation Alerts</h3>
-              <span id="alertBadge" class="badge badge-danger" style="display:none;">0</span>
-            </div>
-            <div id="alertPanel" class="alert-panel">
-              <p style="color:var(--text-light);font-size:0.9rem;">Loading alerts...</p>
-            </div>
-          </div>
+
           <div class="export-buttons">
             <button class="btn-primary btn-sm" onclick="window.exportAsCSV()">📥 CSV</button>
             <button class="btn-primary btn-sm" onclick="window.exportAsJSON()">📋 JSON</button>
@@ -1276,23 +1268,13 @@
                 </div>
                 <div class="form-group">
                   <label>FRAC Code</label>
-                  <input type="text" id="fracCode" placeholder="e.g., 11">
+                  <input type="text" id="fracCode" placeholder="e.g., 11" style="display:none;">
                 </div>
               </div>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Fungal Sensitivity (0-100)</label>
-                  <input type="number" id="fungalSensitivity" min="0" max="100" value="80">
-                </div>
-                <div class="form-group">
-                  <label>Lesion Reduction (%)</label>
-                  <input type="number" id="lesionReduction" min="0" max="100" value="70">
-                </div>
-                <div class="form-group">
-                  <label>Sporulation Inhibition (%)</label>
-                  <input type="number" id="sporulationInhibition" min="0" max="100" value="80">
-                </div>
-              </div>
+              <!-- hidden fields retained for JS data-model compatibility -->
+              <input type="hidden" id="fungalSensitivity" value="80">
+              <input type="hidden" id="lesionReduction" value="70">
+              <input type="hidden" id="sporulationInhibition" value="80">
             </div>
 
             <!-- BIOFERTILIZER FIELDS -->
@@ -1340,17 +1322,15 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Viability (%)</label>
-                  <input type="number" id="viability" min="0" max="100" value="85">
-                </div>
-                <div class="form-group">
                   <label>Shelf-life (months)</label>
                   <input type="number" id="shelfLife" value="12">
                 </div>
-                <div class="form-group">
-                  <label>Nitrogen Contribution (%)</label>
-                  <input type="number" id="nitrogenContribution" min="0" max="100" value="10">
-                </div>
+              </div>
+              <!-- hidden fields for JS compat -->
+              <input type="hidden" id="viability" value="85">
+              <input type="hidden" id="nitrogenContribution" value="0">
+              <div style="margin-top:10px;">
+                <button type="button" class="btn-secondary btn-sm" id="btnGenerateCFUReport" onclick="window.generateCFUReport && window.generateCFUReport()">🔬 Generate CFU Count Report</button>
               </div>
             </div>
 
@@ -1466,7 +1446,7 @@
               </div>
               <div class="form-group">
                 <label>Notes</label>
-                <input type="text" id="ingredientNotes" placeholder="Grade/purity remarks">
+                <input type="text" id="ingredientNotes" placeholder="e.g., Commercial Grade / Lab Grade, purity remarks">
               </div>
             </div>
             <div class="export-buttons">
@@ -1541,20 +1521,19 @@
               </div>
               <div class="form-group">
                 <label>Treatment Group *</label>
-                <select id="obsTreatment">
+                <select id="obsTreatment" onchange="window.updateTreatmentNameVis && window.updateTreatmentNameVis()">
                   <option value="Control">Control (Untreated)</option>
-                  <option value="T1">T1</option>
-                  <option value="T2">T2</option>
-                  <option value="T3">T3</option>
-                  <option value="T4">T4</option>
-                  <option value="T5">T5</option>
+                  <option value="Treatment">Treatment (Test Product)</option>
+                  <option value="Chemical">Chemical Standard (Positive Control)</option>
                 </select>
-                <small id="obsTreatmentHint" style="color:var(--text-light);font-size:0.78rem;display:block;margin-top:3px;">Select a trial above to see custom treatment labels.</small>
+                <small id="obsTreatmentHint" style="color:var(--text-light);font-size:0.78rem;display:block;margin-top:3px;">Select Treatment type, then enter name/dose below.</small>
               </div>
-              <div class="form-group">
-                <label>Pest/Weed Cover (%)</label>
-                <input type="number" id="obsDamage" min="0" max="100" value="0">
+              <div class="form-group" id="obsTreatmentNameGroup">
+                <label>Treatment Name / Dose (manual entry)</label>
+                <input type="text" id="obsTreatmentName" placeholder="e.g., Neem extract 5 ml/L or Product X">
               </div>
+              <!-- hidden damage field kept for data model compatibility -->
+              <input type="hidden" id="obsDamage" value="0">
               <div class="form-group">
                 <label>Pest Count</label>
                 <input type="number" id="obsPestCount" min="0" value="0">
@@ -1610,12 +1589,16 @@
               <textarea id="obsNotes" placeholder="Temperature, humidity, weather, field conditions..."></textarea>
             </div>
 
+            <div style="background:var(--primary-light);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem;color:var(--primary-dark);">
+              💡 <strong>Image-Based Scoring:</strong> Upload or capture a field/microscope image below, then click <strong>"🤖 AI Analyse Image"</strong> to auto-populate Phytotoxicity, Efficacy Rating, and Disease Severity based on the image.
+            </div>
+
             <div id="obsDynamicFields" class="dynamic-fields" style="display:none;"></div>
 
             <div class="form-grid">
               <button class="btn-primary" id="btnOpenCamera">📷 Capture Photo</button>
               <button class="btn-secondary" id="btnVoiceNote">🎤 Voice Note</button>
-              <button class="btn-secondary" onclick="document.getElementById('aiModal').classList.add('active');window.loadAIImageFromObs && window.loadAIImageFromObs()">🤖 AI Detect Pest</button>
+              <button class="btn-secondary" onclick="document.getElementById('aiModal').classList.add('active');window.loadAIImageFromObs && window.loadAIImageFromObs()">🤖 AI Analyse Image</button>
             </div>
 
             <button class="btn-primary" id="btnAddObservation" style="width:100%;">Save Observation</button>
@@ -1680,7 +1663,7 @@
             <h3>Recent Observations</h3>
             <table class="data-table" id="obsTable">
               <thead>
-                <tr><th>Trial</th><th>Date</th><th>DAA</th><th>Treatment</th><th>Cover %</th><th>Phyto</th><th>Image Type</th><th>Efficacy</th><th>Actions</th></tr>
+                <tr><th>Trial</th><th>Date</th><th>DAA</th><th>Treatment</th><th>Treatment Name</th><th>Phyto</th><th>Disease Sev.</th><th>Efficacy</th><th>Actions</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -1809,7 +1792,7 @@
             <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:10px;">Groups sharing the same letter are NOT significantly different (p&lt;0.05). Includes 95% CI and Cohen's d effect size.</p>
             <table class="data-table" id="tukeyTable">
               <thead>
-                <tr><th>Treatment</th><th>N</th><th>Mean Cover%</th><th>95% CI (±)</th><th>Efficacy%</th><th>Tukey Group</th><th>Effect Size (d)</th></tr>
+                <tr><th>Treatment</th><th>N</th><th>Mean Disease Sev.</th><th>95% CI (±)</th><th>Efficacy%</th><th>Tukey Group</th><th>Effect Size (d)</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -1824,7 +1807,7 @@
             <h3>Treatment Effectiveness Matrix</h3>
             <table class="data-table" id="treatmentTable">
               <thead>
-                <tr><th>Treatment</th><th>N</th><th>Mean Cover%</th><th>SD</th><th>SE</th><th>Efficacy%</th><th>Rating</th></tr>
+                <tr><th>Treatment</th><th>N</th><th>Mean Disease Sev.</th><th>SD</th><th>SE</th><th>Efficacy%</th><th>Rating</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -2046,8 +2029,15 @@
                 <label>Microscopic Notes (spore count, mobility, morphology)</label>
                 <input type="text" id="obsMicroscopicNotes" placeholder="e.g., 3.2×10^6 spores/mL, motile rods">
               </div>
+              <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;">
+                <div style="flex:1;">
+                  <label>Microscope Image</label>
+                  <input type="file" id="obsMicroscopeImageFile" accept="image/*" style="display:none;" onchange="window.handleMicroscopeImageUpload && window.handleMicroscopeImageUpload(this)">
+                </div>
+                <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('obsMicroscopeImageFile').click()">📁 Upload</button>
+                <button type="button" class="btn-primary btn-sm" onclick="window.openCameraForMicroscope && window.openCameraForMicroscope()">🔬 Capture</button>
+              </div>
             </div>
-
             <div class="form-group">
               <label>Image Preview</label>
               <img id="obsImagePreview" src="" alt="Observation image preview" style="max-width:220px;border-radius:8px;display:none;">
@@ -2061,6 +2051,29 @@
               </div>
             </div>
             <div id="fieldMapCanvas"></div>
+          </div>
+
+          <div class="card">
+            <h3>📷 Field Image Capture</h3>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:12px;">Capture or upload field photos linked to a trial for the map and report gallery.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Select Trial</label>
+                <select id="fieldMapTrialSelect">
+                  <option value="">Select trial...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Description / Location Tag</label>
+                <input type="text" id="fieldMapImageDesc" placeholder="e.g., North Block – Post-spray">
+              </div>
+            </div>
+            <div class="export-buttons" style="margin-bottom:10px;">
+              <button type="button" class="btn-primary btn-sm" onclick="window.openCameraForFieldMap && window.openCameraForFieldMap()">📷 Capture Photo</button>
+              <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('fieldMapImageUpload').click()">📁 Upload Image</button>
+            </div>
+            <input type="file" id="fieldMapImageUpload" accept="image/*" style="display:none;" onchange="window.handleFieldMapImageUpload && window.handleFieldMapImageUpload(this)">
+            <div id="fieldMapImageGallery" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"></div>
           </div>
 
           <div class="card">
@@ -2109,6 +2122,107 @@
                 <p>Printable cards for field teams to record trial observations.</p>
                 <button class="btn-primary btn-sm" onclick="window.printObservationCards()">Print Cards</button>
               </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>🧪 Formula-Based Report Generator</h3>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:14px;">Generate comprehensive trial reports based on actual data, images, graphs, ANOVA stats, and environmental conditions.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Select Trial *</label>
+                <select id="fbrTrialSelect"><option value="">All Trials</option></select>
+              </div>
+              <div class="form-group">
+                <label>Report Type</label>
+                <select id="fbrReportType">
+                  <option value="lab">🔬 Lab Analysis Report</option>
+                  <option value="field">🌾 Field Test Report</option>
+                  <option value="trial_summary">📋 Trial Summary Report</option>
+                  <option value="regulatory">📑 Regulatory Snapshot</option>
+                  <option value="combined">📦 Combined (All-in-One)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Export Format</label>
+                <select id="fbrExportFormat">
+                  <option value="pdf">PDF</option>
+                  <option value="word">Word (HTML/DOCX)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:14px;">
+              <p style="font-weight:600;font-size:0.88rem;margin:0 0 8px;color:var(--text);">Report Sections to Include:</p>
+              <div class="form-grid three" style="gap:6px;">
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecProduct" checked> Product / Formula Details</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecInvestigator" checked> Investigator &amp; Crop Info</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecPest" checked> Treated Pest / Fungus</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecLabImages" checked> Lab Analysis Images</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecFieldGraphs" checked> Field Test Graphs &amp; Stats</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecAnova" checked> ANOVA &amp; Statistical Tables</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecEnviron" checked> Environmental Conditions</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecDisease" checked> Disease Severity Data</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecPhyto" checked> Phytotoxicity Assessment</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecEfficacy" checked> Efficacy Rating Summary</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecConclusion" checked> Conclusion &amp; Recommendations</label>
+                <label style="font-size:0.85rem;"><input type="checkbox" id="fbrSecRaw"> Raw Observation Data Appendix</label>
+              </div>
+            </div>
+
+            <div class="export-buttons">
+              <button class="btn-primary" id="btnGenerateFBR" onclick="window.generateFormulaBasedReport && window.generateFormulaBasedReport()">📄 Generate Report</button>
+              <button class="btn-secondary btn-sm" id="btnPreviewFBR" onclick="window.previewFormulaBasedReport && window.previewFormulaBasedReport()">👁️ Preview</button>
+            </div>
+            <div id="fbrPreviewArea" style="margin-top:16px;display:none;"></div>
+          </div>
+
+          <div class="card">
+            <h3>🔬 CFU Count Report Tool</h3>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:12px;">Generate a dedicated Colony Forming Unit (CFU) count report for biofertilizer formulations.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Formulation *</label>
+                <select id="cfuReportFormulation"><option value="">Select formulation...</option></select>
+              </div>
+              <div class="form-group">
+                <label>Sample ID</label>
+                <input type="text" id="cfuSampleId" placeholder="e.g., BIO-2024-001">
+              </div>
+              <div class="form-group">
+                <label>CFU Count (cells/mL or cells/g)</label>
+                <input type="text" id="cfuReportCount" placeholder="e.g., 2.4 × 10^8">
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Dilution Factor</label>
+                <input type="text" id="cfuDilutionFactor" placeholder="e.g., 10^-6">
+              </div>
+              <div class="form-group">
+                <label>Plate Count (average colonies)</label>
+                <input type="number" id="cfuPlateCount" min="0" placeholder="e.g., 240">
+              </div>
+              <div class="form-group">
+                <label>Analyst Name</label>
+                <input type="text" id="cfuAnalystName" placeholder="Lab analyst">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Lab Image (plate / microscope slide) — Upload or Capture</label>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                <input type="file" id="cfuImageFile" accept="image/*" style="flex:1;" onchange="window.handleCFUImageUpload && window.handleCFUImageUpload(this)">
+                <button type="button" class="btn-primary btn-sm" onclick="window.openCameraForCFU && window.openCameraForCFU()">📷 Capture</button>
+              </div>
+              <img id="cfuImagePreview" src="" alt="CFU plate image" style="max-width:200px;border-radius:8px;margin-top:8px;display:none;">
+            </div>
+            <div class="form-group">
+              <label>Observations / Notes</label>
+              <textarea id="cfuNotes" placeholder="Colony morphology, colour, contamination notes..."></textarea>
+            </div>
+            <div class="export-buttons">
+              <button class="btn-primary btn-sm" onclick="window.generateCFUReportPDF && window.generateCFUReportPDF()">📄 Generate CFU PDF Report</button>
+              <button class="btn-secondary btn-sm" onclick="window.generateCFUReportWord && window.generateCFUReportWord()">📝 Export as Word</button>
             </div>
           </div>
 
@@ -2337,6 +2451,26 @@
           <div class="form-group">
             <label>Number of Replications</label>
             <input type="number" id="replications" min="4" max="12" value="4">
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Analysis Type *</label>
+            <select id="trialAnalysisType">
+              <option value="Field Analysis">Field Analysis</option>
+              <option value="Lab Analysis">Lab Analysis</option>
+              <option value="Greenhouse Analysis">Greenhouse Analysis</option>
+              <option value="Combined">Combined (Lab + Field)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Treated Pest / Target Organism</label>
+            <input type="text" id="trialTreatedPest" placeholder="e.g., Aphids, Blast fungus, Root-knot nematode">
+          </div>
+          <div class="form-group" id="fungusSpeciesGroup">
+            <label>Fungus Species (if Fungicide)</label>
+            <input type="text" id="trialFungusSpecies" placeholder="e.g., Pyricularia oryzae, Fusarium oxysporum">
           </div>
         </div>
 
@@ -3235,7 +3369,10 @@
       $('trialStart').value = '';
       $('trialEnd').value = '';
       $('trialInvestigator').value = '';
-      $('trialSprayDate1').value = '';
+      if ($('trialAnalysisType')) $('trialAnalysisType').value = 'Field Analysis';
+      if ($('trialTreatedPest')) $('trialTreatedPest').value = '';
+      if ($('trialFungusSpecies')) $('trialFungusSpecies').value = '';
+      $('trialSprayDate1').value = '';;
       $('trialSprayDate2').value = '';
       $('trialSprayDate3').value = '';
       $('treatLabelControl').value = 'Control (Untreated)';
@@ -3264,6 +3401,9 @@
       $('trialStart').value = item.start_date || '';
       $('trialEnd').value = item.end_date || '';
       $('trialInvestigator').value = item.investigator || '';
+      if ($('trialAnalysisType')) $('trialAnalysisType').value = item.analysis_type || 'Field Analysis';
+      if ($('trialTreatedPest')) $('trialTreatedPest').value = item.treated_pest || '';
+      if ($('trialFungusSpecies')) $('trialFungusSpecies').value = item.fungus_species || '';
       $('trialSprayDate1').value = item.spray_date1 || '';
       $('trialSprayDate2').value = item.spray_date2 || '';
       $('trialSprayDate3').value = item.spray_date3 || '';
@@ -3306,6 +3446,8 @@
       $('obsReplication').value = '1';
       $('obsDaa').value = '0';
       $('obsTreatment').value = 'Control';
+      if ($('obsTreatmentName')) $('obsTreatmentName').value = '';
+      if ($('obsTreatmentNameGroup')) $('obsTreatmentNameGroup').style.display = 'none';
       $('obsDamage').value = '0';
       $('obsPestCount').value = '0';
       $('obsPhyto').value = '0';
@@ -3332,6 +3474,8 @@
       $('obsReplication').value = safeParseNum(item.replication) || 1;
       $('obsDaa').value = safeParseNum(item.daa) || 0;
       $('obsTreatment').value = item.treatment || 'Control';
+      if ($('obsTreatmentName')) $('obsTreatmentName').value = item.treatment_name || '';
+      if ($('obsTreatmentNameGroup')) $('obsTreatmentNameGroup').style.display = (item.treatment === 'Control' ? 'none' : '');
       $('obsDamage').value = safeParseNum(item.damage) || 0;
       $('obsPestCount').value = safeParseNum(item.pest_count) || 0;
       $('obsPhyto').value = safeParseNum(item.phyto) || 0;
@@ -5286,9 +5430,11 @@
                 </div>
               </div>
 
-              <p class="trial-card-meta">🧪 ${t.type || '—'} &nbsp;|&nbsp; 🌱 ${t.crop_type || '—'} (${t.crop_stage || '—'})</p>
-              <p class="trial-card-meta">🧬 ${formulation ? formulation.name : 'No formulation'}</p>
-              ${t.investigator ? `<p class="trial-card-meta">👤 ${escapeHtml(t.investigator)}</p>` : ''}
+              <p class="trial-card-meta">🔬 ${t.analysis_type || t.type || '—'} &nbsp;|&nbsp; 🌱 ${t.crop_type || '—'} (${t.crop_stage || '—'})</p>
+              <p class="trial-card-meta">🧬 <strong>Formula/Product:</strong> ${formulation ? escapeHtml(formulation.name) : 'No formulation linked'}</p>
+              ${t.investigator ? `<p class="trial-card-meta">👤 <strong>Investigator:</strong> ${escapeHtml(t.investigator)}</p>` : ''}
+              ${t.treated_pest ? `<p class="trial-card-meta">🎯 <strong>Treated Pest:</strong> ${escapeHtml(t.treated_pest)}</p>` : ''}
+              ${t.fungus_species ? `<p class="trial-card-meta">🍄 <strong>Fungus Species:</strong> ${escapeHtml(t.fungus_species)}</p>` : ''}
               ${t.location ? `<p class="trial-card-meta">📍 ${escapeHtml(t.location)}</p>` : ''}
               ${sprayDates ? `<p class="trial-card-meta">💉 Sprays: ${sprayDates}</p>` : ''}
 
@@ -5298,12 +5444,6 @@
                 <div class="trial-card-stat"><span>${progressPct}%</span><small>Progress</small></div>
                 <div class="trial-card-stat"><span>${t.replications || 4}</span><small>Reps</small></div>
               </div>
-
-              ${Object.keys(labels).length > 0 ? `
-              <div style="margin-top:8px;font-size:0.78rem;color:var(--text-light);">
-                <strong>Treatments:</strong>
-                ${Object.entries(labels).map(([k,v]) => v ? `<span style="display:inline-block;background:var(--bg);border-radius:4px;padding:1px 6px;margin:2px;border:1px solid var(--border);">${k}: ${escapeHtml(v)}</span>` : '').filter(Boolean).join('')}
-              </div>` : ''}
 
               <div style="margin-top:10px;">
                 <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
@@ -5384,18 +5524,18 @@
       tbody.innerHTML = state.observations.map(o => {
         const trial = state.trials.find(t => t.id == o.trial_id);
         const efficacy = computeControlPercentFromCover(trial, o) || 0;
-        const rating = getEfficacyRating(efficacy);
-        const imageType = String(o.image_type || '').trim().replace(/_/g, ' ');
+        const rating = o.efficacy_rating || getEfficacyRating(efficacy);
+        const treatmentName = o.treatment_name || '—';
         return `
           <tr>
             <td>${trial?.name || 'N/A'}</td>
             <td>${new Date(o.date).toLocaleDateString()}</td>
             <td>${o.daa || 0}</td>
             <td><span class="badge badge-info">${o.treatment || 'Control'}</span></td>
-            <td>${o.damage}%</td>
+            <td style="font-size:0.82rem;color:var(--text-light);">${treatmentName}</td>
             <td><span class="severity-label low">${o.phyto}</span></td>
-            <td>${imageType || '-'}</td>
-            <td><span class="rating-badge rating-${rating.toLowerCase()}">${rating}</span></td>
+            <td><span class="severity-label">${o.disease_severity ?? '—'}</span></td>
+            <td><span class="rating-badge rating-${String(rating).toLowerCase()}">${rating}</span></td>
             <td>
               <button class="btn-sm btn-secondary" onclick="window.editObservation('${o.id}')">Edit</button>
               <button class="btn-sm btn-secondary" onclick="window.deleteObservation('${o.id}')">Delete</button>
@@ -6814,7 +6954,7 @@
       
       const sorted = state.observations.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
       const labels = sorted.map(o => new Date(o.date).toLocaleDateString());
-      const values = sorted.map(o => safeParseNum(o.damage) || 0);
+      const values = sorted.map(o => safeParseNum(o.disease_severity) || 0);
       
       if (state.charts.efficacy) state.charts.efficacy.destroy();
       
@@ -6823,7 +6963,7 @@
         data: {
           labels,
           datasets: [{
-            label: 'Pest/Weed Cover %',
+            label: 'Disease Severity (0-9)',
             data: values,
             borderColor: 'rgb(220, 38, 38)',
             backgroundColor: 'rgba(220, 38, 38, 0.1)',
@@ -7394,6 +7534,9 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         start_date: $('trialStart').value,
         end_date: $('trialEnd').value,
         investigator: $('trialInvestigator').value.trim(),
+        analysis_type: $('trialAnalysisType') ? $('trialAnalysisType').value : '',
+        treated_pest: $('trialTreatedPest') ? $('trialTreatedPest').value.trim() : '',
+        fungus_species: $('trialFungusSpecies') ? $('trialFungusSpecies').value.trim() : '',
         spray_date1: $('trialSprayDate1').value,
         spray_date2: $('trialSprayDate2').value,
         spray_date3: $('trialSprayDate3').value,
@@ -7925,6 +8068,424 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
       setActiveTab('reports');
       showToast('Template preview updated', 'success');
     };
+
+    window.generateTemplatePreview = function() {
+      const model = buildTemplateReportModel();
+      $('reportPrintArea').innerHTML = buildTemplatePreviewHtml(model);
+      setActiveTab('reports');
+      showToast('Template preview updated', 'success');
+    };
+
+    // ── Treatment name visibility ──────────────────────────────────────────────
+    window.updateTreatmentNameVis = function() {
+      const sel = $('obsTreatment');
+      const grp = $('obsTreatmentNameGroup');
+      if (!sel || !grp) return;
+      grp.style.display = sel.value === 'Control' ? 'none' : '';
+    };
+    // run once on load
+    (function() { if ($('obsTreatmentNameGroup')) $('obsTreatmentNameGroup').style.display = 'none'; })();
+
+    // ── Microscope / Field-map camera helpers ──────────────────────────────────
+    function readFileAsDataURL(file) {
+      return new Promise(function(resolve) {
+        const reader = new FileReader();
+        reader.onload = function(e) { resolve(e.target.result); };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleMicroscopeImageUpload = async function(input) {
+      if (!input.files || !input.files[0]) return;
+      const dataUrl = await readFileAsDataURL(input.files[0]);
+      const preview = $('obsImagePreview');
+      const hidden = $('obsImage');
+      if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+      if (hidden) hidden.value = dataUrl;
+      // set image type to microscopic automatically
+      if ($('obsImageType')) { $('obsImageType').value = 'microscopic'; if (window.handleObsImageTypeChange) window.handleObsImageTypeChange(); }
+      showToast('Microscope image loaded', 'success');
+    };
+
+    window.openCameraForMicroscope = function() {
+      // reuse the existing camera modal, then on save route back to obsImage
+      window._cameraTarget = 'microscope';
+      const cameraModal = document.getElementById('cameraModal');
+      if (cameraModal) { cameraModal.classList.add('active'); if (window.startCamera) window.startCamera(); }
+      else showToast('Camera not available', 'warning');
+    };
+
+    window.openCameraForFieldMap = function() {
+      window._cameraTarget = 'fieldmap';
+      const cameraModal = document.getElementById('cameraModal');
+      if (cameraModal) { cameraModal.classList.add('active'); if (window.startCamera) window.startCamera(); }
+      else showToast('Camera not available', 'warning');
+    };
+
+    window.handleFieldMapImageUpload = async function(input) {
+      if (!input.files || !input.files[0]) return;
+      const dataUrl = await readFileAsDataURL(input.files[0]);
+      appendFieldMapImage(dataUrl, ($('fieldMapImageDesc') ? $('fieldMapImageDesc').value : '') || 'Field image');
+    };
+
+    function appendFieldMapImage(dataUrl, desc) {
+      const gallery = $('fieldMapImageGallery');
+      if (!gallery) return;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block;';
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.cssText = 'width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border);';
+      const cap = document.createElement('div');
+      cap.textContent = desc;
+      cap.style.cssText = 'font-size:0.72rem;color:var(--text-light);text-align:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      wrap.appendChild(img); wrap.appendChild(cap);
+      gallery.appendChild(wrap);
+    }
+
+    window.openCameraForCFU = function() {
+      window._cameraTarget = 'cfu';
+      const cameraModal = document.getElementById('cameraModal');
+      if (cameraModal) { cameraModal.classList.add('active'); if (window.startCamera) window.startCamera(); }
+      else showToast('Camera not available', 'warning');
+    };
+
+    window.handleCFUImageUpload = async function(input) {
+      if (!input.files || !input.files[0]) return;
+      const dataUrl = await readFileAsDataURL(input.files[0]);
+      const p = $('cfuImagePreview');
+      if (p) { p.src = dataUrl; p.style.display = 'block'; }
+      window._cfuImageData = dataUrl;
+    };
+
+    // ── Formula-Based Report Generator ────────────────────────────────────────
+    function getFBRInputs() {
+      return {
+        trialId: $('fbrTrialSelect') ? $('fbrTrialSelect').value : '',
+        reportType: $('fbrReportType') ? $('fbrReportType').value : 'combined',
+        format: $('fbrExportFormat') ? $('fbrExportFormat').value : 'pdf',
+        secProduct:   !!$('fbrSecProduct')?.checked,
+        secInvestigator: !!$('fbrSecInvestigator')?.checked,
+        secPest:      !!$('fbrSecPest')?.checked,
+        secLabImages: !!$('fbrSecLabImages')?.checked,
+        secFieldGraphs: !!$('fbrSecFieldGraphs')?.checked,
+        secAnova:     !!$('fbrSecAnova')?.checked,
+        secEnviron:   !!$('fbrSecEnviron')?.checked,
+        secDisease:   !!$('fbrSecDisease')?.checked,
+        secPhyto:     !!$('fbrSecPhyto')?.checked,
+        secEfficacy:  !!$('fbrSecEfficacy')?.checked,
+        secConclusion:!!$('fbrSecConclusion')?.checked,
+        secRaw:       !!$('fbrSecRaw')?.checked
+      };
+    }
+
+    function buildFBRHtml(inp) {
+      const trial = inp.trialId ? state.trials.find(function(t) { return String(t.id) === String(inp.trialId); }) : null;
+      const observations = trial
+        ? state.observations.filter(function(o) { return String(o.trial_id) === String(trial.id); })
+        : state.observations;
+      const formulation = trial ? state.formulations.find(function(f) { return String(f.id) === String(trial.formulation_id); }) : null;
+      const anovaResult = computeANOVA ? computeANOVA() : null;
+      const stats = computeAggregateStats ? computeAggregateStats() : null;
+      const now = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+      const reportTypeLabels = { lab: 'Lab Analysis Report', field: 'Field Test Report', trial_summary: 'Trial Summary Report', regulatory: 'Regulatory Snapshot', combined: 'Comprehensive Trial Report' };
+      const orgName = (state.settings && state.settings.orgName) || 'Miklens Crop Protection';
+
+      let html = `<div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;color:#1e293b;">`;
+      html += `<div style="background:#059669;color:#fff;padding:24px;border-radius:8px;margin-bottom:20px;">
+        <h1 style="margin:0;font-size:1.4rem;">${orgName}</h1>
+        <h2 style="margin:6px 0 0;font-size:1.1rem;font-weight:400;">${reportTypeLabels[inp.reportType] || 'Trial Report'}</h2>
+        <p style="margin:8px 0 0;font-size:0.85rem;opacity:0.9;">Generated: ${now} | Trial: ${trial ? trial.name : 'All Trials'}</p>
+      </div>`;
+
+      if (inp.secProduct && formulation) {
+        html += `<div style="margin-bottom:16px;padding:14px;background:#f0fdf4;border-radius:8px;border-left:4px solid #059669;">
+          <h3 style="margin:0 0 8px;color:#047857;">Product / Formula Details</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <tr><td style="padding:4px 8px;font-weight:600;width:200px;">Product Name</td><td style="padding:4px 8px;">${escapeHtml(formulation.name || '—')}</td></tr>
+            <tr style="background:#e8f5e9;"><td style="padding:4px 8px;font-weight:600;">Category</td><td style="padding:4px 8px;">${escapeHtml(formulation.type || '—')}</td></tr>
+            <tr><td style="padding:4px 8px;font-weight:600;">Active Ingredient</td><td style="padding:4px 8px;">${escapeHtml(String(formulation.active_ingredient || '—'))}%</td></tr>
+            <tr style="background:#e8f5e9;"><td style="padding:4px 8px;font-weight:600;">CFU Concentration</td><td style="padding:4px 8px;">${escapeHtml(formulation.cfu_concentration || '—')}</td></tr>
+            <tr><td style="padding:4px 8px;font-weight:600;">Mode of Action</td><td style="padding:4px 8px;">${escapeHtml(formulation.mode_of_action || '—')}</td></tr>
+            <tr style="background:#e8f5e9;"><td style="padding:4px 8px;font-weight:600;">Cost per Unit</td><td style="padding:4px 8px;">₹${escapeHtml(String(formulation.cost || '—'))}</td></tr>
+          </table>
+        </div>`;
+      }
+
+      if (inp.secInvestigator && trial) {
+        html += `<div style="margin-bottom:16px;padding:14px;background:#eff6ff;border-radius:8px;border-left:4px solid #3b82f6;">
+          <h3 style="margin:0 0 8px;color:#1d4ed8;">Trial Details</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <tr><td style="padding:4px 8px;font-weight:600;width:200px;">Investigator</td><td style="padding:4px 8px;">${escapeHtml(trial.investigator || '—')}</td></tr>
+            <tr style="background:#dbeafe;"><td style="padding:4px 8px;font-weight:600;">Crop</td><td style="padding:4px 8px;">${escapeHtml(trial.crop_type || '—')} — ${escapeHtml(trial.crop_stage || '—')}</td></tr>
+            <tr><td style="padding:4px 8px;font-weight:600;">Analysis Type</td><td style="padding:4px 8px;">${escapeHtml(trial.analysis_type || trial.type || '—')}</td></tr>
+            <tr style="background:#dbeafe;"><td style="padding:4px 8px;font-weight:600;">Location</td><td style="padding:4px 8px;">${escapeHtml(trial.location || '—')}</td></tr>
+            <tr><td style="padding:4px 8px;font-weight:600;">Period</td><td style="padding:4px 8px;">${escapeHtml(trial.start_date || '—')} to ${escapeHtml(trial.end_date || '—')}</td></tr>
+            <tr style="background:#dbeafe;"><td style="padding:4px 8px;font-weight:600;">Replications</td><td style="padding:4px 8px;">${trial.replications || '—'}</td></tr>
+          </table>
+        </div>`;
+      }
+
+      if (inp.secPest && trial) {
+        html += `<div style="margin-bottom:16px;padding:14px;background:#fef9c3;border-radius:8px;border-left:4px solid #f59e0b;">
+          <h3 style="margin:0 0 8px;color:#b45309;">Pest / Target Organism</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <tr><td style="padding:4px 8px;font-weight:600;width:200px;">Treated Pest</td><td style="padding:4px 8px;">${escapeHtml(trial.treated_pest || '—')}</td></tr>
+            ${trial.fungus_species ? `<tr style="background:#fef3c7;"><td style="padding:4px 8px;font-weight:600;">Fungus Species</td><td style="padding:4px 8px;">${escapeHtml(trial.fungus_species)}</td></tr>` : ''}
+          </table>
+        </div>`;
+      }
+
+      if (inp.secDisease || inp.secPhyto || inp.secEfficacy) {
+        const mean = function(arr) { return arr.length ? arr.reduce(function(a, b) { return a + b; }, 0) / arr.length : 0; };
+        const sevVals = observations.map(function(o) { return safeParseNum(o.disease_severity) || 0; });
+        const phyVals = observations.map(function(o) { return safeParseNum(o.phyto) || 0; });
+        const effCounts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+        observations.forEach(function(o) { if (o.efficacy_rating && effCounts[o.efficacy_rating] !== undefined) effCounts[o.efficacy_rating]++; });
+        html += `<div style="margin-bottom:16px;padding:14px;background:#fff7ed;border-radius:8px;border-left:4px solid #f97316;">
+          <h3 style="margin:0 0 10px;color:#c2410c;">Field Observations Summary</h3>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            ${inp.secDisease ? `<div style="text-align:center;background:#fff;border-radius:6px;padding:10px;"><div style="font-size:1.6rem;font-weight:700;color:#dc2626;">${mean(sevVals).toFixed(1)}</div><div style="font-size:0.78rem;color:#6b7280;">Avg Disease Severity (0-9)</div></div>` : ''}
+            ${inp.secPhyto ? `<div style="text-align:center;background:#fff;border-radius:6px;padding:10px;"><div style="font-size:1.6rem;font-weight:700;color:#d97706;">${mean(phyVals).toFixed(1)}</div><div style="font-size:0.78rem;color:#6b7280;">Avg Phytotoxicity (0-9)</div></div>` : ''}
+            ${inp.secEfficacy ? `<div style="text-align:center;background:#fff;border-radius:6px;padding:10px;"><div style="font-size:1.6rem;font-weight:700;color:#059669;">${Object.entries(effCounts).filter(function(e){ return e[1]>0; }).map(function(e){ return e[0]+':'+e[1]; }).join(', ') || '—'}</div><div style="font-size:0.78rem;color:#6b7280;">Efficacy Ratings</div></div>` : ''}
+          </div>
+        </div>`;
+      }
+
+      if (inp.secEnviron) {
+        const envNotes = observations.filter(function(o) { return o.notes; }).slice(0, 5);
+        html += `<div style="margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border-left:4px solid #0891b2;">
+          <h3 style="margin:0 0 8px;color:#0e7490;">Environmental Conditions</h3>
+          ${envNotes.length ? envNotes.map(function(o) { return `<p style="margin:4px 0;font-size:0.85rem;"><strong>${o.date}:</strong> ${escapeHtml(o.notes)}</p>`; }).join('') : '<p style="font-size:0.85rem;color:#64748b;">No environmental notes recorded.</p>'}
+        </div>`;
+      }
+
+      if (inp.secAnova && anovaResult) {
+        html += `<div style="margin-bottom:16px;padding:14px;background:#f5f3ff;border-radius:8px;border-left:4px solid #7c3aed;">
+          <h3 style="margin:0 0 8px;color:#6d28d9;">ANOVA &amp; Statistics</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <thead><tr style="background:#ede9fe;"><th style="padding:6px 8px;text-align:left;">Metric</th><th style="padding:6px 8px;text-align:right;">Value</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:4px 8px;">F-statistic</td><td style="padding:4px 8px;text-align:right;">${(anovaResult.fStat || 0).toFixed(4)}</td></tr>
+              <tr style="background:#f5f3ff;"><td style="padding:4px 8px;">p-value</td><td style="padding:4px 8px;text-align:right;">${(anovaResult.pValue || 0).toFixed(4)}</td></tr>
+              <tr><td style="padding:4px 8px;">Significance</td><td style="padding:4px 8px;text-align:right;">${anovaResult.pValue < 0.05 ? '<span style="color:#059669;">✓ Significant (p < 0.05)</span>' : '<span style="color:#dc2626;">Not Significant</span>'}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+      }
+
+      if (inp.secLabImages) {
+        const microscopeObs = observations.filter(function(o) { return o.image_type === 'microscopic' && o.image_url; }).slice(0, 4);
+        const labObs = observations.filter(function(o) { return o.image_type === 'lab_observation' && o.image_url; }).slice(0, 4);
+        const images = [...microscopeObs, ...labObs];
+        if (images.length) {
+          html += `<div style="margin-bottom:16px;padding:14px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;">
+            <h3 style="margin:0 0 10px;color:#1e293b;">🔬 Lab Analysis Images</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+              ${images.map(function(o) { return `<div style="text-align:center;"><img src="${o.image_url}" alt="lab image" style="width:160px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;">${o.microscopic_data ? (() => { try { const md = JSON.parse(o.microscopic_data); return `<div style="font-size:0.72rem;color:#64748b;max-width:160px;">${md.magnification || ''} ${md.slide_id || ''}</div>`; } catch(e) { return ''; } })() : ''}</div>`; }).join('')}
+            </div>
+          </div>`;
+        }
+      }
+
+      if (inp.secConclusion) {
+        const totalObs = observations.length;
+        const sevAvg = observations.length ? observations.reduce(function(a, o) { return a + (safeParseNum(o.disease_severity) || 0); }, 0) / observations.length : 0;
+        const performance = sevAvg < 3 ? 'excellent control' : (sevAvg < 5 ? 'good control' : (sevAvg < 7 ? 'moderate control' : 'limited control'));
+        html += `<div style="margin-bottom:16px;padding:14px;background:#ecfdf5;border-radius:8px;border-left:4px solid #10b981;">
+          <h3 style="margin:0 0 8px;color:#047857;">Conclusion &amp; Recommendations</h3>
+          <p style="font-size:0.88rem;margin:0 0 8px;">Based on ${totalObs} observations${trial ? ' in trial <strong>' + escapeHtml(trial.name) + '</strong>' : ''}, ${formulation ? '<strong>' + escapeHtml(formulation.name) + '</strong>' : 'the assessed formulation'} demonstrated <strong>${performance}</strong> with an average disease severity of <strong>${sevAvg.toFixed(1)}/9</strong>.</p>
+          ${formulation && formulation.type === 'Fungicide' && trial && trial.fungus_species ? `<p style="font-size:0.88rem;margin:0;">Efficacy against <em>${escapeHtml(trial.fungus_species)}</em> was evaluated under ${escapeHtml(trial.analysis_type || trial.type || 'field')} conditions.</p>` : ''}
+          <p style="font-size:0.88rem;margin:8px 0 0;"><em>This report was generated automatically from recorded trial data. Verify all figures against raw observation sheets.</em></p>
+        </div>`;
+      }
+
+      if (inp.secRaw) {
+        html += `<div style="margin-bottom:16px;"><h3 style="color:#1e293b;">Raw Observations</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+            <thead><tr style="background:#e2e8f0;">${['Date','DAA','Treatment','Treatment Name','Phyto','Disease Sev.','Efficacy','Notes'].map(function(h){return '<th style="padding:5px 8px;text-align:left;">'+h+'</th>';}).join('')}</tr></thead>
+            <tbody>${observations.slice(0, 50).map(function(o, i) {
+              return `<tr style="background:${i%2===0?'#fff':'#f8fafc'};">
+                <td style="padding:4px 8px;">${o.date || '—'}</td>
+                <td style="padding:4px 8px;">${o.daa ?? '—'}</td>
+                <td style="padding:4px 8px;">${escapeHtml(o.treatment || '—')}</td>
+                <td style="padding:4px 8px;">${escapeHtml(o.treatment_name || '—')}</td>
+                <td style="padding:4px 8px;">${o.phyto ?? '—'}</td>
+                <td style="padding:4px 8px;">${o.disease_severity ?? '—'}</td>
+                <td style="padding:4px 8px;">${o.efficacy_rating || '—'}</td>
+                <td style="padding:4px 8px;">${escapeHtml((o.notes || '').substring(0,40))}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+      }
+
+      html += `<div style="margin-top:20px;padding:10px;border-top:1px solid #e2e8f0;font-size:0.78rem;color:#94a3b8;text-align:center;">${orgName} — Confidential Trial Report — Generated ${now}</div>`;
+      html += `</div>`;
+      return html;
+    }
+
+    window.previewFormulaBasedReport = function() {
+      const inp = getFBRInputs();
+      const html = buildFBRHtml(inp);
+      const area = $('fbrPreviewArea');
+      if (area) { area.style.display = 'block'; area.innerHTML = html; }
+      showToast('Preview ready', 'success');
+    };
+
+    window.generateFormulaBasedReport = function() {
+      const inp = getFBRInputs();
+      const html = buildFBRHtml(inp);
+      if (inp.format === 'word') {
+        const blob = new Blob([`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Trial Report</title></head><body>${html}</body></html>`], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'Trial_Report.doc'; a.click(); URL.revokeObjectURL(url);
+        showToast('Word report exported', 'success');
+      } else {
+        if (!window.jspdf) { showToast('jsPDF not loaded', 'error'); return; }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const reportTypeLabel = { lab: 'Lab Analysis Report', field: 'Field Test Report', trial_summary: 'Trial Summary', regulatory: 'Regulatory Snapshot', combined: 'Comprehensive Trial Report' }[inp.reportType] || 'Trial Report';
+        doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 28, 'F');
+        doc.setTextColor(255, 255, 255); doc.setFontSize(16); doc.text('Miklens Crop Protection', 14, 12);
+        doc.setFontSize(11); doc.text(reportTypeLabel, 14, 20);
+        doc.setFontSize(9); doc.text('Generated: ' + new Date().toLocaleDateString(), 14, 26);
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        div.style.cssText = 'position:absolute;left:-9999px;top:0;width:750px;';
+        document.body.appendChild(div);
+        if (window.html2canvas) {
+          window.html2canvas(div, { scale: 1.5 }).then(function(canvas) {
+            document.body.removeChild(div);
+            const imgData = canvas.toDataURL('image/jpeg', 0.85);
+            const ratio = canvas.width / canvas.height;
+            const w = 182; const h = w / ratio;
+            let y = 32;
+            if (h > 267) {
+              const pageH = 267; let src = 0;
+              while (src < canvas.height) {
+                const sliceH = Math.round((pageH / w) * canvas.width);
+                const tempC = document.createElement('canvas'); tempC.width = canvas.width; tempC.height = Math.min(sliceH, canvas.height - src);
+                const tempCtx = tempC.getContext('2d'); tempCtx.drawImage(canvas, 0, -src);
+                if (src > 0) doc.addPage();
+                doc.addImage(tempC.toDataURL('image/jpeg', 0.85), 'JPEG', 14, src === 0 ? y : 10, w, Math.min(pageH, (tempC.height / canvas.width) * w));
+                src += sliceH;
+              }
+            } else {
+              doc.addImage(imgData, 'JPEG', 14, y, w, h);
+            }
+            doc.save('Trial_Report_' + (inp.reportType || 'combined') + '.pdf');
+            showToast('PDF report generated', 'success');
+          });
+        } else {
+          document.body.removeChild(div);
+          doc.settekstColor && doc.setTextColor(0, 0, 0);
+          doc.setFontSize(10); doc.text('Report preview not available (html2canvas missing).', 14, 40);
+          doc.save('Trial_Report.pdf');
+        }
+      }
+    };
+
+    // ── CFU Report ────────────────────────────────────────────────────────────
+    function buildCFUReportHtml() {
+      const formId = $('cfuReportFormulation') ? $('cfuReportFormulation').value : '';
+      const formulation = state.formulations.find(function(f) { return String(f.id) === String(formId); });
+      const sampleId = ($('cfuSampleId') ? $('cfuSampleId').value : '') || 'N/A';
+      const cfuCount = ($('cfuReportCount') ? $('cfuReportCount').value : '') || 'N/A';
+      const dilution = ($('cfuDilutionFactor') ? $('cfuDilutionFactor').value : '') || 'N/A';
+      const plateCount = ($('cfuPlateCount') ? $('cfuPlateCount').value : '') || 'N/A';
+      const analyst = ($('cfuAnalystName') ? $('cfuAnalystName').value : '') || 'N/A';
+      const notes = ($('cfuNotes') ? $('cfuNotes').value : '') || '';
+      const imgData = window._cfuImageData || '';
+      const orgName = (state.settings && state.settings.orgName) || 'Miklens Crop Protection';
+      const now = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+      return `<div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#1e293b;">
+        <div style="background:#0891b2;color:#fff;padding:20px;border-radius:8px;margin-bottom:20px;">
+          <h1 style="margin:0;font-size:1.2rem;">${orgName}</h1>
+          <h2 style="margin:6px 0 0;font-size:1rem;font-weight:400;">Colony Forming Unit (CFU) Count Analysis Report</h2>
+          <p style="margin:6px 0 0;font-size:0.82rem;opacity:0.9;">Date: ${now}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;margin-bottom:16px;">
+          <tr style="background:#e0f2fe;"><td style="padding:6px 10px;font-weight:600;width:220px;">Formulation / Product</td><td style="padding:6px 10px;">${escapeHtml(formulation ? formulation.name : 'N/A')}</td></tr>
+          <tr><td style="padding:6px 10px;font-weight:600;">Microbial Strain</td><td style="padding:6px 10px;">${escapeHtml(formulation ? (formulation.microbial_strain || '—') : '—')}</td></tr>
+          <tr style="background:#e0f2fe;"><td style="padding:6px 10px;font-weight:600;">Sample ID</td><td style="padding:6px 10px;">${escapeHtml(sampleId)}</td></tr>
+          <tr><td style="padding:6px 10px;font-weight:600;">CFU Concentration</td><td style="padding:6px 10px;">${escapeHtml(formulation ? (formulation.cfu_concentration || '—') : '—')}</td></tr>
+          <tr style="background:#e0f2fe;"><td style="padding:6px 10px;font-weight:600;">Counted CFU (cells/mL or g)</td><td style="padding:6px 10px;font-size:1rem;font-weight:700;color:#0891b2;">${escapeHtml(cfuCount)}</td></tr>
+          <tr><td style="padding:6px 10px;font-weight:600;">Plate Colony Count (avg)</td><td style="padding:6px 10px;">${escapeHtml(plateCount)}</td></tr>
+          <tr style="background:#e0f2fe;"><td style="padding:6px 10px;font-weight:600;">Dilution Factor</td><td style="padding:6px 10px;">${escapeHtml(dilution)}</td></tr>
+          <tr><td style="padding:6px 10px;font-weight:600;">Analyst</td><td style="padding:6px 10px;">${escapeHtml(analyst)}</td></tr>
+        </table>
+        ${imgData ? `<div style="margin-bottom:16px;"><h3 style="color:#0e7490;">Plate / Slide Image</h3><img src="${imgData}" alt="CFU plate" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;"></div>` : ''}
+        ${notes ? `<div style="padding:12px;background:#f0f9ff;border-radius:8px;border-left:4px solid #0891b2;margin-bottom:16px;"><h4 style="margin:0 0 6px;color:#0e7490;">Laboratory Notes</h4><p style="margin:0;font-size:0.88rem;">${escapeHtml(notes)}</p></div>` : ''}
+        <div style="margin-top:20px;padding:10px;border-top:1px solid #e2e8f0;font-size:0.78rem;color:#94a3b8;text-align:center;">${orgName} — CFU Analysis Report — ${now}</div>
+      </div>`;
+    }
+
+    window.generateCFUReport = function() {
+      // shortcut from Biofertilizer CFU button — scroll to CFU tool in reports
+      setActiveTab('reports');
+      setTimeout(function() {
+        const el = document.getElementById('cfuReportFormulation');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+      showToast('Go to Reports → CFU Count Report Tool', 'info');
+    };
+
+    window.generateCFUReportPDF = function() {
+      if (!window.jspdf) { showToast('jsPDF not loaded', 'error'); return; }
+      const html = buildCFUReportHtml();
+      const div = document.createElement('div');
+      div.innerHTML = html; div.style.cssText = 'position:absolute;left:-9999px;top:0;width:700px;';
+      document.body.appendChild(div);
+      if (window.html2canvas) {
+        window.html2canvas(div, { scale: 1.5 }).then(function(canvas) {
+          document.body.removeChild(div);
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF('p', 'mm', 'a4');
+          const imgData = canvas.toDataURL('image/jpeg', 0.9);
+          const ratio = 182 / (canvas.width / 1.5 * (210 / 700));
+          doc.addImage(imgData, 'JPEG', 14, 10, 182, Math.min(270, (canvas.height / canvas.width) * 182));
+          doc.save('CFU_Count_Report.pdf');
+          showToast('CFU PDF generated', 'success');
+        });
+      } else {
+        document.body.removeChild(div);
+        showToast('html2canvas not available', 'error');
+      }
+    };
+
+    window.generateCFUReportWord = function() {
+      const html = buildCFUReportHtml();
+      const blob = new Blob([`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>CFU Report</title></head><body>${html}</body></html>`], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'CFU_Count_Report.doc'; a.click(); URL.revokeObjectURL(url);
+      showToast('CFU Word report exported', 'success');
+    };
+
+    // Populate FBR + CFU dropdowns alongside template report
+    const _origPopulateReportTemplateTrials = populateReportTemplateTrials;
+    function populateFBRDropdowns() {
+      _origPopulateReportTemplateTrials && _origPopulateReportTemplateTrials();
+      const fbrSel = $('fbrTrialSelect');
+      if (fbrSel) {
+        const cur = fbrSel.value;
+        fbrSel.innerHTML = '<option value="">All Trials</option>' + state.trials.map(function(t) { return `<option value="${t.id}">${t.name}</option>`; }).join('');
+        fbrSel.value = cur || '';
+      }
+      const cfuSel = $('cfuReportFormulation');
+      if (cfuSel) {
+        const cur = cfuSel.value;
+        cfuSel.innerHTML = '<option value="">Select formulation...</option>' + state.formulations.filter(function(f) { return f.type === 'Biofertilizer'; }).map(function(f) { return `<option value="${f.id}">${f.name}</option>`; }).join('');
+        cfuSel.value = cur || '';
+      }
+      const fmSel = $('fieldMapTrialSelect');
+      if (fmSel) {
+        const cur = fmSel.value;
+        fmSel.innerHTML = '<option value="">Select trial...</option>' + state.trials.map(function(t) { return `<option value="${t.id}">${t.name}</option>`; }).join('');
+        fmSel.value = cur || '';
+      }
+    }
+    populateReportTemplateTrials = populateFBRDropdowns;
 
     window.generateTemplateReport = function() {
       if (!window.jspdf) { showToast('jsPDF not loaded', 'error'); return; }
@@ -8533,6 +9094,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         daa: safeParseNum($('obsDaa').value) || 0,
         replication: safeParseNum($('obsReplication').value) || 1,
         treatment: $('obsTreatment').value || 'Control',
+        treatment_name: ($('obsTreatmentName') ? $('obsTreatmentName').value.trim() : ''),
         damage: safeParseNum($('obsDamage').value) || 0,
         pest_count: safeParseNum($('obsPestCount').value) || 0,
         phyto: safeParseNum($('obsPhyto').value) || 0,
@@ -8599,6 +9161,7 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
         $('cameraModal').classList.remove('active');
       }
     }
+    window.startCamera = openCamera;
 
     $('btnOpenCamera').onclick = openCamera;
 
@@ -8614,10 +9177,28 @@ logAudit(state.editingFormulationId ? 'update' : 'create', 'formulation', params
     };
 
     $('btnUsePhoto').onclick = () => {
-      setObservationImage($('cameraPreview').src);
-      addImageToLibrary($('cameraPreview').src, 'camera_capture');
-      if (!$('obsImageType').value) $('obsImageType').value = 'field_overview';
-      showToast('Photo set on observation', 'success');
+      const imgSrc = $('cameraPreview').src;
+      const target = window._cameraTarget || 'observation';
+      if (target === 'fieldmap') {
+        const desc = ($('fieldMapImageDesc') ? $('fieldMapImageDesc').value : '') || 'Field capture';
+        appendFieldMapImage(imgSrc, desc);
+        showToast('Field photo added to map gallery', 'success');
+      } else if (target === 'cfu') {
+        const p = $('cfuImagePreview');
+        if (p) { p.src = imgSrc; p.style.display = 'block'; }
+        window._cfuImageData = imgSrc;
+        showToast('CFU plate image captured', 'success');
+      } else if (target === 'microscope') {
+        setObservationImage(imgSrc);
+        if ($('obsImageType')) { $('obsImageType').value = 'microscopic'; if (window.handleObsImageTypeChange) window.handleObsImageTypeChange(); }
+        showToast('Microscope image captured', 'success');
+      } else {
+        setObservationImage(imgSrc);
+        if (!$('obsImageType').value) $('obsImageType').value = 'field_overview';
+        showToast('Photo set on observation', 'success');
+      }
+      addImageToLibrary(imgSrc, 'camera_capture');
+      window._cameraTarget = 'observation';
       $('cameraModal').classList.remove('active');
       if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
     };
